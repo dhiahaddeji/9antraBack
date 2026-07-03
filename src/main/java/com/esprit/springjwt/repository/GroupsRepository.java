@@ -21,7 +21,7 @@ public interface GroupsRepository extends JpaRepository<Groups,Long> {
     @Query(value = "SELECT COUNT(*) FROM etudiant_groups where group_id=:id", nativeQuery = true)
     Integer getCountMembersByGroupId(Long id);
     
-    @Query(value = "SELECT * FROM groups g JOIN etudiant_groups eg ON g.id = eg.groups_id JOIN user u ON eg.user_id = u.id WHERE u.id =:id", nativeQuery = true)
+    @Query(value = "SELECT * FROM `groups` g JOIN etudiant_groups eg ON g.id = eg.groups_id JOIN user u ON eg.user_id = u.id WHERE u.id =:id", nativeQuery = true)
     List<Groups> getGroupsByStudentId(Long id);
     @Query(value ="SELECT * FROM  etudiant_groups e WHERE e.user_id = :userId", nativeQuery = true)
     List<Groups> findGroupsByUserId( Long userId);

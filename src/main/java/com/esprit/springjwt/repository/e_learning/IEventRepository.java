@@ -19,10 +19,10 @@ public interface IEventRepository extends JpaRepository<Event, Long> {
     @Query("SELECT e.image from Event e where e.id = :id")
     String getImageById(@Param("id") Long id);
     
-    @Query(value="SELECT * FROM Event",nativeQuery=true)
+    @Query(value="SELECT * FROM event",nativeQuery=true)
     List<Event> getAllEvents();
-    
-    @Query(value="SELECT * FROM Event where id=:id",nativeQuery=true)
+
+    @Query(value="SELECT * FROM event where id=:id",nativeQuery=true)
     Event getEvent(Long id);
 
     //List<Event> findEventsByUsers(@Param("user") User user);
