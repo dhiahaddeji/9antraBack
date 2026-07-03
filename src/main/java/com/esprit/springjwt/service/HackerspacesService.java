@@ -9,13 +9,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.beans.factory.annotation.Value;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 
 @Service
@@ -24,13 +21,8 @@ public class HackerspacesService {
     private HackerspacesRepository hackerspacesRepository;
     @Autowired
     private NotificationService notificationService;
-    //add hackerspace with upload it photo
-   // public static String UPLOAD_DOCUMENTS = "C:\\Users\\Wale\\Desktop\\Final Design\\bridge\\src\\assets\\Documents\\";
-
-    //adding global variable
     @Value("${files.folder}")
     String filesFolder;
-    public static String UPLOAD_DOCUMENTS = "C:\\Users\\DELL\\Desktop\\The Bridge Front\\9antraFormationFrant\\src\\assets\\Documents\\";
 
 
     public Hackerspaces addHackerspaces(
@@ -42,28 +34,12 @@ public class HackerspacesService {
             String Adresse,
             MultipartFile photo
     ) throws IOException {
-        String currentDate = new SimpleDateFormat("yyyyMMddHHmm").format(new Date());
-        String filesName = currentDate + photo.getOriginalFilename();
+        String newFilename = System.currentTimeMillis() + "_" + photo.getOriginalFilename();
+        Path uploadDir = Paths.get(filesFolder, "Documents");
+        Files.createDirectories(uploadDir);
+        photo.transferTo(uploadDir.resolve(newFilename).toFile());
 
-        byte[] bytes1 = filesName.getBytes();
-        //Path path1 = Paths.get(UPLOAD_DOCUMENTS + filesName);
-        Path path1 = Paths.get(filesFolder + "\\Documents\\" + filesName);
-        Files.write(path1, bytes1);
-        // Generate a timestamp for the image filename
-        String timestamp = Long.toString(System.currentTimeMillis());
-
-        // Set the destination path to save the image
-        String destinationPath = "C:\\Users\\Wale\\Desktop\\zied\\9antraFormationFrant-wale\\src\\assets\\Documents\\";
-
-        // Create a new filename using the timestamp and original filename
-        String newFilename = timestamp + "_" + photo.getOriginalFilename();
-
-        // Save the file to the disk
-        //photo.transferTo(new File(UPLOAD_DOCUMENTS + newFilename));
-        photo.transferTo(new File(filesFolder + "\\Documents\\" + newFilename));
         String attributeName = Region.replaceAll("\\s+", "");
-        ;
-
         Hackerspaces hackerspaces = new Hackerspaces();
         hackerspaces.setRegion(attributeName);
         hackerspaces.setLocation(Location);
@@ -74,7 +50,6 @@ public class HackerspacesService {
         hackerspaces.setPhoto(newFilename);
         notificationService.sendNotifToAllUsers("Exciting Announcement: New hackerspace released! check it now", "/hackerspace/"+attributeName, "New hackerspace");
         return hackerspacesRepository.save(hackerspaces);
-
     }
 
 
@@ -90,24 +65,12 @@ public class HackerspacesService {
              String Description,
              String Adresse,
              MultipartFile photo) throws IOException {
-    	
-    	 String currentDate = new SimpleDateFormat("yyyyMMddHHmm").format(new Date());
-         String filesName = currentDate + photo.getOriginalFilename();
 
-         byte[] bytes1 = filesName.getBytes();
-         //Path path1 = Paths.get(UPLOAD_DOCUMENTS + filesName);
-         Path path1 = Paths.get(filesFolder + "\\Documents\\" + filesName);
-         Files.write(path1, bytes1);
-         // Generate a timestamp for the image filename
-         String timestamp = Long.toString(System.currentTimeMillis());
+        String newFilename = System.currentTimeMillis() + "_" + photo.getOriginalFilename();
+        Path uploadDir = Paths.get(filesFolder, "Documents");
+        Files.createDirectories(uploadDir);
+        photo.transferTo(uploadDir.resolve(newFilename).toFile());
 
-         // Create a new filename using the timestamp and original filename
-         String newFilename = timestamp + "_" + photo.getOriginalFilename();
-
-         // Save the file to the disk
-         //photo.transferTo(new File(UPLOAD_DOCUMENTS + newFilename));
-         photo.transferTo(new File(filesFolder + "\\Documents\\" + newFilename));
-    	
     	Hackerspaces updated = hackerspacesRepository.getReferenceById(id);
     	if(updated !=null) {
     		updated.setAdresse(Adresse);
