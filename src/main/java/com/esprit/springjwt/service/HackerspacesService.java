@@ -37,7 +37,7 @@ public class HackerspacesService {
         String newFilename = System.currentTimeMillis() + "_" + photo.getOriginalFilename();
         Path uploadDir = Paths.get(filesFolder, "Documents");
         Files.createDirectories(uploadDir);
-        photo.transferTo(uploadDir.resolve(newFilename).toFile());
+        photo.transferTo(uploadDir.resolve(newFilename));
 
         String attributeName = Region.replaceAll("\\s+", "");
         Hackerspaces hackerspaces = new Hackerspaces();
@@ -69,7 +69,7 @@ public class HackerspacesService {
         String newFilename = System.currentTimeMillis() + "_" + photo.getOriginalFilename();
         Path uploadDir = Paths.get(filesFolder, "Documents");
         Files.createDirectories(uploadDir);
-        photo.transferTo(uploadDir.resolve(newFilename).toFile());
+        photo.transferTo(uploadDir.resolve(newFilename));
 
     	Hackerspaces updated = hackerspacesRepository.getReferenceById(id);
     	if(updated !=null) {
