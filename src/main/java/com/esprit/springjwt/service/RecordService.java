@@ -12,17 +12,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Optional;
-import java.util.UUID;
-
-import static com.esprit.springjwt.service.HackerspacesService.UPLOAD_DOCUMENTS;
 
 @Service
 public class RecordService {
@@ -34,47 +30,34 @@ public class RecordService {
 	UserRepository userRepository;
     @Value("${files.folder}")
     String filesFolder;
+
     public Record addRecord(String title, Long groupId, Long idUser, MultipartFile file) throws IOException {
 
         String timestamp = Long.toString(System.currentTimeMillis());
-        
         String newFilename = timestamp + "_" + file.getOriginalFilename();
 
-        // Find the group by ID
         Optional<Groups> groupOptional = groupsRepository.findById(groupId);
         User user = userRepository.getById(idUser);
         if (groupOptional.isPresent()) {
             Groups group = groupOptional.get();
 
-            // Create a folder for the group based on its creation date
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-            String groupFolderName = dateFormat.format(group.getCreationDate());
-            String groupFolderPath = filesFolder + "\\Records\\" + groupFolderName;
+            String dateFolderName = dateFormat.format(group.getCreationDate());
 
-            // Ensure the folder exists; if not, create it
-            File groupFolder = new File(groupFolderPath);
-            if (!groupFolder.exists()) {
-                groupFolder.mkdirs();
-            }
+            Path uploadDir = Paths.get(filesFolder, "Records", dateFolderName);
+            Files.createDirectories(uploadDir);
 
-            // Save the file to the group's folder
-            File recordFile = new File(groupFolderPath + "\\" + newFilename);
-            file.transferTo(recordFile);
+            Path recordPath = uploadDir.resolve(newFilename);
+            file.transferTo(recordPath);
 
             Record record = new Record();
             record.setTitle(title);
-            if(user!=null) {
-            	record.setUser(user);
-            }else {
-            	record.setUser(null);
-            }
-            
-            record.setVideoLink(groupFolderName + "/" + newFilename);
+            record.setUser(user);
+            record.setVideoLink(dateFolderName + "/" + newFilename);
             record.setGroups(group);
 
             return recordRepository.save(record);
         } else {
-            // Handle the case where the group with the provided ID is not found
             throw new IllegalArgumentException("Group not found with ID: " + groupId);
         }
     }

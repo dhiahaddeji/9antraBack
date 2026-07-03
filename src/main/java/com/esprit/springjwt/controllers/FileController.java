@@ -21,8 +21,17 @@ public class FileController {
     private String filesFolder;
 
     @GetMapping("/Documents/{filename}")
-    public ResponseEntity<Resource> serveFile(@PathVariable String filename) throws IOException {
-        Path filePath = Paths.get(filesFolder, "Documents", filename);
+    public ResponseEntity<Resource> serveDocument(@PathVariable String filename) throws IOException {
+        return serveFromFolder(Paths.get(filesFolder, "Documents", filename));
+    }
+
+    @GetMapping("/Records/{date}/{filename}")
+    public ResponseEntity<Resource> serveRecord(@PathVariable String date,
+                                                 @PathVariable String filename) throws IOException {
+        return serveFromFolder(Paths.get(filesFolder, "Records", date, filename));
+    }
+
+    private ResponseEntity<Resource> serveFromFolder(Path filePath) throws IOException {
         Resource resource = new FileSystemResource(filePath);
         if (!resource.exists()) {
             return ResponseEntity.notFound().build();
