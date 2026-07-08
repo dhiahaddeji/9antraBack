@@ -107,7 +107,7 @@ public class AuthController {
             newUser.setPassword(encoder.encode(user.getPassword()));
             newUser.setCountry(user.getCountry());
             newUser.setProvider(local);
-            newUser.setEnabled(1);
+            newUser.setEnabled(0);
             newUser.setImage("avatarStudent.png");
             Set<Role> roles = new HashSet<>();
             Optional<Role> roleOptional = roleRepository.findByName(ERole.ETUDIANT);
