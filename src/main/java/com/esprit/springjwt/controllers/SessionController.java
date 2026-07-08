@@ -108,13 +108,13 @@ public class SessionController {
             System.out.println("  - Name: " + session.getSessionName());
             System.out.println("  - Formateur ID: " + formateur.getId());
             System.out.println("  - Formateur User ID: " + currentUser.getId());
-            System.out.println("  - Groups: " + groups.stream().map(g -> g.getId()).toList());
+            System.out.println("  - Groups: " + groups.stream().map(g -> g.getId()).collect(java.util.stream.Collectors.toList()));
             
             Session savedSession = SessionService.addSession(session);
             
             System.out.println("Session saved with ID: " + savedSession.getId());
             System.out.println("  - Formateur in saved session: " + (savedSession.getFormateur() != null ? savedSession.getFormateur().getId() : "null"));
-            System.out.println("  - Groups in saved session: " + savedSession.getGroups().stream().map(g -> g.getId()).toList());
+            System.out.println("  - Groups in saved session: " + savedSession.getGroups().stream().map(g -> g.getId()).collect(java.util.stream.Collectors.toList()));
             
             return ResponseEntity.ok(savedSession);
         } catch (Exception e) {
