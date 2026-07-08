@@ -75,7 +75,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         String token = jwtUtils.generateTokenForEmail(email);
 
         // Fetch the user from DB to get their role
-        User user = userRepository.findByUsername(email);
+        User user = userRepository.findByUsernameWithRoles(email);
         String role = "ETUDIANT";
         if (user != null && user.getRoles() != null && !user.getRoles().isEmpty()) {
             role = user.getRoles().iterator().next().getName().name();
