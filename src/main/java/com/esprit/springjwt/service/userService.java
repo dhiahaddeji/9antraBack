@@ -276,16 +276,18 @@ public class userService {
 			  }
 		  }
 	  }
-    public String saveImageFromUrl(String imageUrl) throws IOException {
-        // Generate a unique filename
-        String filename = UUID.randomUUID().toString() + ".png";
-        Path filePath = Paths.get(filesFolder, filename);
-
-        // Download the image
-        try (InputStream inputStream = new URL(imageUrl).openStream()) {
-            Files.copy(inputStream, filePath);
+    public String saveImageFromUrl(String imageUrl) {
+        try {
+            String filename = UUID.randomUUID().toString() + ".png";
+            Path uploadDir = Paths.get(filesFolder);
+            Files.createDirectories(uploadDir);
+            Path filePath = uploadDir.resolve(filename);
+            try (InputStream inputStream = new URL(imageUrl).openStream()) {
+                Files.copy(inputStream, filePath, StandardCopyOption.REPLACE_EXISTING);
+            }
+            return filename;
+        } catch (Exception e) {
+            return "avatarStudent.png";
         }
-
-        return filename;
     }
 }
