@@ -93,6 +93,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         user.setImage(imageName);
 
         user.setCountry("Tunisia");
+        user.setEnabled(1);
         Date d = new Date();
         user.setEmail_verified_at(d);
         Role studentRole = roleRepository.findByName(ERole.ETUDIANT)
