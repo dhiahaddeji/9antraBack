@@ -25,11 +25,15 @@ public class CookieUtils {
     }
 
     public static void addCookie(HttpServletResponse response, String name, String value, int maxAge) {
-        Cookie cookie = new Cookie(name, value);
-        cookie.setPath("/");
-        cookie.setHttpOnly(true);
-        cookie.setMaxAge(maxAge);
-        response.addCookie(cookie);
+        // SameSite=None;Secure is required so the cookie survives the cross-site redirect
+        // that happens when the OAuth2 provider (Google/GitHub) sends the user back.
+        String header = name + "=" + value
+                + "; Path=/"
+                + "; HttpOnly"
+                + "; Secure"
+                + "; SameSite=None"
+                + "; Max-Age=" + maxAge;
+        response.addHeader("Set-Cookie", header);
     }
 
     public static void deleteCookie(HttpServletRequest request, HttpServletResponse response, String name) {
@@ -37,10 +41,13 @@ public class CookieUtils {
         if (cookies != null && cookies.length > 0) {
             for (Cookie cookie: cookies) {
                 if (cookie.getName().equals(name)) {
-                    cookie.setValue("");
-                    cookie.setPath("/");
-                    cookie.setMaxAge(0);
-                    response.addCookie(cookie);
+                    String header = name + "="
+                            + "; Path=/"
+                            + "; HttpOnly"
+                            + "; Secure"
+                            + "; SameSite=None"
+                            + "; Max-Age=0";
+                    response.addHeader("Set-Cookie", header);
                 }
             }
         }
