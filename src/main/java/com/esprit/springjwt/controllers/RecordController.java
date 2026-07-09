@@ -2,6 +2,8 @@ package com.esprit.springjwt.controllers;
 
 import com.esprit.springjwt.entity.Record;
 import com.esprit.springjwt.service.RecordService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +16,7 @@ import java.io.IOException;
 @CrossOrigin(origins = "*")
 @RequestMapping("/api/records")
 public class RecordController {
+    private static final Logger logger = LoggerFactory.getLogger(RecordController.class);
 
     @Autowired
     private RecordService recordService;
@@ -24,16 +27,23 @@ public class RecordController {
                                        @RequestParam("idUser") Long idUser,
                                        @RequestParam("file") MultipartFile file) {
         try {
+            logger.info("RecordController - Received file upload request:");
+            logger.info("  Title: {}", title);
+            logger.info("  GroupId: {}", groupId);
+            logger.info("  IdUser: {}", idUser);
+            logger.info("  File: {}, Size: {} bytes", file.getOriginalFilename(), file.getSize());
+            
             Record record = recordService.addRecord(title, groupId, idUser, file);
+            logger.info("RecordController - Upload successful, returning record: {}", record.getId());
             return new ResponseEntity<>(record, HttpStatus.CREATED);
         } catch (IllegalArgumentException e) {
-            // Handle the case where the group with the provided ID is not found
+            logger.error("RecordController - Validation error: {}", e.getMessage());
             return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
         } catch (IOException e) {
-            // Handle IO-related errors when saving the file
+            logger.error("RecordController - IO error: {}", e.getMessage(), e);
             return new ResponseEntity<>("Failed to save the file: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         } catch (Exception e) {
-            // Handle other unexpected exceptions
+            logger.error("RecordController - Unexpected error: {}", e.getMessage(), e);
             return new ResponseEntity<>("An unexpected error occurred: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -43,6 +53,7 @@ public class RecordController {
         try {
             return new ResponseEntity<>(recordService.getRecordsByGroups(groupId), HttpStatus.OK);
         } catch (Exception e) {
+            logger.error("RecordController - Error getting records: {}", e.getMessage(), e);
             return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -53,6 +64,7 @@ public class RecordController {
             recordService.deleteRecord(id);
             return new ResponseEntity<>(HttpStatus.OK);
         } catch (Exception e) {
+            logger.error("RecordController - Error deleting record: {}", e.getMessage(), e);
             return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

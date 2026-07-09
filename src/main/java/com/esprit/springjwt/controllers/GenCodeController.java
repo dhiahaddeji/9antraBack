@@ -48,16 +48,13 @@ public class GenCodeController {
   @PostMapping("/generatecode")
 //post with check if email exist in user model
   public ResponseEntity<?> generateCode(@RequestBody GenCode genCode) throws UnsupportedEncodingException, MessagingException {
+	  System.out.println("========================================");
+	  System.out.println("RESET PASSWORD REQUEST FOR: " + genCode.getEmail());
+	  System.out.println("========================================");
 	  
     if (userRepository.existsByUsername(genCode.getEmail())) {
       User user =userRepository.findByEmail(genCode.getEmail()) ;
       gencodeRepository.save(genCode);
-      
-      // Commenté temporairement pour les tests (à réactiver en production)
-      // String msj ="Bonjour " + genCode.getEmail() + ", votre code de vérification est: "+ genCode.getCode()  ;
-      // String subject = "Code de réinitialisation - 9antraTraining";
-      // emailService.sendSimpleMail(genCode.getEmail(), subject, msj);
-      // mail.SendForgotPassword(user, genCode.getCode());
       
       System.out.println("========================================");
       System.out.println("CODE DE VÉRIFICATION POUR: " + genCode.getEmail());
@@ -66,6 +63,9 @@ public class GenCodeController {
       
       return ResponseEntity.ok(new MessageResponse("Code generated successfully!"));
     } else {
+      System.out.println("========================================");
+      System.out.println("ERROR: EMAIL NOT FOUND: " + genCode.getEmail());
+      System.out.println("========================================");
       return ResponseEntity
           .badRequest()
           .body(new MessageResponse("Error: Email is not found!"));
