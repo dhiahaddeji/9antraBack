@@ -31,6 +31,12 @@ public class FileController {
         return serveFromFolder(Paths.get(filesFolder, "Records", date, filename));
     }
 
+    @GetMapping("/Certifications/**")
+    public ResponseEntity<Resource> serveCertificate(@RequestParam String path) throws IOException {
+        // path example: "Certifications/Grafana June 2026 4649761/test test.pdf"
+        return serveFromFolder(Paths.get(filesFolder, path));
+    }
+
     private ResponseEntity<Resource> serveFromFolder(Path filePath) throws IOException {
         Resource resource = new FileSystemResource(filePath);
         if (!resource.exists()) {

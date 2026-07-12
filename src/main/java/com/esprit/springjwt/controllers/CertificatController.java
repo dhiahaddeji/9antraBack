@@ -91,7 +91,7 @@ public class CertificatController {
             Random random = new Random();
             int randomNumber = random.nextInt(9999999) + 1;
             File f = new File(filesFolder + "\\Certifications\\"+nom_formation+" "+month +  " " + randomNumber );
-            if (f.mkdir() == true) {
+            if (f.mkdirs() == true) {
                 System.out.println("Directory has been created successfully");
             }
             else {
@@ -157,21 +157,35 @@ public class CertificatController {
                     certificat.setMonth(month);
                     certificat.setPath(relativePath);
                     
-                    // Try to find the user by name (first name + last name) - using optimized query
-                    List<User> matchingUsers = userRepository.findByFirstNameAndLastName(studentName);
-                    System.out.println("Looking for user: '" + studentName + "' - Found: " + matchingUsers.size() + " matches");
+                    // Try to find the user by username/email
+                    String studentNameTrimmed = studentName.trim();
+                    User user = userRepository.findByUsername(studentNameTrimmed);
+                    System.out.println("Looking for user with username: '" + studentNameTrimmed + "'");
+                    System.out.println("User found: " + (user != null ? "YES - ID: " + user.getId() + ", Name: " + user.getFirstName() + " " + user.getLastName() : "NO"));
                     
-                    if (!matchingUsers.isEmpty()) {
-                        certificat.setUser(matchingUsers.get(0));
-                        certificatRepository.save(certificat);
-                        System.out.println("Certificate saved to database for: " + studentName);
+                    if (user != null) {
+                        certificat.setUser(user);
+                        Certificat savedCert = certificatRepository.save(certificat);
+                        System.out.println("✓ Certificate saved to database for user ID: " + user.getId() + " (" + studentNameTrimmed + ")");
+                        System.out.println("  Saved certificate ID: " + savedCert.getIdCertificat() + ", Linked user_id: " + (savedCert.getUser() != null ? savedCert.getUser().getId() : "NULL"));
                         successCount++;
                     } else {
-                        // If no user found, still save the certificate without user reference
-                        System.out.println("No user found for: " + studentName + ". Saving without user reference.");
-                        certificatRepository.save(certificat);
-                        System.out.println("Certificate saved to database (without user reference) for: " + studentName);
-                        successCount++;
+                        // If no user found, try by full name
+                        System.out.println("⚠ User not found by username. Trying by full name: " + studentNameTrimmed);
+                        List<User> matchingUsers = userRepository.findByFirstNameAndLastName(studentNameTrimmed);
+                        System.out.println("Found " + matchingUsers.size() + " users by full name");
+                        if (!matchingUsers.isEmpty()) {
+                            certificat.setUser(matchingUsers.get(0));
+                            certificatRepository.save(certificat);
+                            System.out.println("✓ Certificate saved to database for: " + studentNameTrimmed);
+                            successCount++;
+                        } else {
+                            // If still no user found, save without user reference
+                            System.out.println("✗ No user found for: " + studentNameTrimmed + ". Saving certificate WITHOUT user link!");
+                            certificatRepository.save(certificat);
+                            System.out.println("⚠ Certificate saved to database (without user reference) for: " + studentNameTrimmed);
+                            successCount++;
+                        }
                     }
 
                 } catch (Exception e) {
@@ -228,7 +242,7 @@ public class CertificatController {
                     String pdfname = filesFolder + "\\" + relativePath;
                     //File f = new File("C:\\Users\\DELL\\Desktop\\The Bridge Front\\9antraFormationFrant\\src\\assets\\Certifications\\" + nom_formation + " " + month);
                     File f = new File(filesFolder + "\\Certifications\\" + nom_formation + " " + month);
-                    if (f.mkdir()) {
+                    if (f.mkdirs()) {
                         System.out.println("Directory has been created successfully");
                     } else {
                         System.out.println("Directory cannot be created");
@@ -328,7 +342,7 @@ public class CertificatController {
             String pdfname = filesFolder + "\\" + relativePath;
             File f = new File(filesFolder + "\\Certifications\\" + nom_formation + " " + month);
 
-            if (f.mkdir()) {
+            if (f.mkdirs()) {
                 System.out.println("Directory has been created successfully");
             } else {
                 System.out.println("Directory cannot be created");
@@ -853,7 +867,7 @@ group.setCertificatesGenerated(false);
                 File f = new File(filesFolder + "\\Certifications\\" + nom_formation + " " + newMonth);
              // Creates all directories if they don't exist
 
-                if (f.mkdir()) {
+                if (f.mkdirs()) {
                     System.out.println("Directory has been created successfully");
                 } else {
                     System.out.println("Directory cannot be created");
@@ -966,6 +980,13 @@ group.setCertificatesGenerated(false);
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             List<Certificat> userCertificates = user.getCertificats();
+            System.out.println("✓ Fetching certificates for user ID: " + userId + " (" + user.getUsername() + ")");
+            System.out.println("  Found " + (userCertificates != null ? userCertificates.size() : 0) + " certificates");
+            if (userCertificates != null && !userCertificates.isEmpty()) {
+                for (Certificat cert : userCertificates) {
+                    System.out.println("    - Certificate ID: " + cert.getIdCertificat() + ", Path: " + cert.getPath());
+                }
+            }
 
             return ResponseEntity.ok(userCertificates);
         } catch (Exception e) {
@@ -1050,6 +1071,57 @@ group.setCertificatesGenerated(false);
         File pdfFile = new File(pdfFilePath);
         if (pdfFile.exists() && pdfFile.isFile()) {
             pdfFile.delete();
+        }
+    }
+
+    @GetMapping("/Debug/AllCertificates")
+    public ResponseEntity<?> debugAllCertificates() {
+        try {
+            List<Certificat> allCertificates = certificatRepository.findAll();
+            
+            List<Map<String, Object>> result = new ArrayList<>();
+            
+            for (Certificat cert : allCertificates) {
+                Map<String, Object> certMap = new HashMap<>();
+                certMap.put("idCertificat", cert.getIdCertificat());
+                certMap.put("date", cert.getDate());
+                certMap.put("periode", cert.getPeriode());
+                certMap.put("month", cert.getMonth());
+                certMap.put("path", cert.getPath());
+                certMap.put("user_id", cert.getUser() != null ? cert.getUser().getId() : "NULL");
+                certMap.put("user_username", cert.getUser() != null ? cert.getUser().getUsername() : "NO USER");
+                certMap.put("user_name", cert.getUser() != null ? cert.getUser().getFirstName() + " " + cert.getUser().getLastName() : "NO USER");
+                result.add(certMap);
+            }
+            
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/Debug/Students")
+    public ResponseEntity<?> debugAllStudents() {
+        try {
+            List<User> allStudents = userRepository.getAllStudents();
+            
+            List<Map<String, Object>> result = new ArrayList<>();
+            
+            for (User student : allStudents) {
+                Map<String, Object> studentMap = new HashMap<>();
+                studentMap.put("id", student.getId());
+                studentMap.put("username", student.getUsername());
+                studentMap.put("firstName", student.getFirstName());
+                studentMap.put("lastName", student.getLastName());
+                studentMap.put("certificatCount", student.getCertificats() != null ? student.getCertificats().size() : 0);
+                result.add(studentMap);
+            }
+            
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
         }
     }
 

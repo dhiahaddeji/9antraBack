@@ -220,4 +220,46 @@ public class UserController {
         
     }
 
+    @GetMapping("/getAllStudents")
+    public ResponseEntity<?> getAllStudents() {
+        try {
+            List<User> students = userRepository.getAllStudents();
+            return new ResponseEntity<>(students, HttpStatus.OK);
+        } catch (Exception e) {
+            System.err.println("Error fetching all students: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error fetching students: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/checkUserRole/{username}")
+    public ResponseEntity<?> checkUserRole(@PathVariable String username) {
+        try {
+            User user = userRepository.findByUsername(username);
+            if (user == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            boolean isStudent = user.getRoles().stream()
+                    .anyMatch(role -> role.getName() == ERole.ETUDIANT);
+            
+            List<String> roles = user.getRoles().stream()
+                    .map(role -> role.getName().toString())
+                    .toList();
+            
+            java.util.Map<String, Object> response = new java.util.HashMap<>();
+            response.put("username", user.getUsername());
+            response.put("firstName", user.getFirstName());
+            response.put("lastName", user.getLastName());
+            response.put("isStudent", isStudent);
+            response.put("roles", roles);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            System.err.println("Error checking user role: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error checking user role: " + e.getMessage());
+        }
+    }
+
 }
