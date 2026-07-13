@@ -106,7 +106,7 @@ public class WebSecurityConfig { // extends WebSecurityConfigurerAdapter {
         .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
         .authorizeRequests().antMatchers("/api/auth/**","/api/forum/**","/swagger*/**","/api/user/**","/api/quiz/**","/api/Hackerspaces/**","/api/**",
         "/swagger-ui/**","/api/resetpassword/**",
-        "/api-docs","/api/requestPath/**").permitAll()
+        "/api-docs","/api/requestPath/**","/uploads/**").permitAll()
         .antMatchers("/sba-websocket-chat/**").permitAll()
         .antMatchers("/sba-websocket-notification/**").permitAll()
         .antMatchers("/sba-websocket-forum/**").permitAll()
