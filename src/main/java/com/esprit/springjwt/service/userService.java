@@ -228,10 +228,12 @@ public class userService {
         List<CourseStatsDto> stats = new ArrayList<>();
 
         for (User u: users) {
+            if (u.getTypeFormation() == null || u.getTypeFormation().isEmpty()) continue;
+
             //Check if stats is Empty if not, check if that CourseName is existing in it
             if(!stats.isEmpty()){
                 Optional<CourseStatsDto> foundCourse = stats.stream()
-                        .filter(courseStats -> courseStats.getCourseName().equals(u.getTypeFormation()))
+                        .filter(courseStats -> u.getTypeFormation().equals(courseStats.getCourseName()))
                         .findFirst();
 
                 //if Course is found increment its number of attendees

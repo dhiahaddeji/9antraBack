@@ -20,7 +20,18 @@ public class GithubOAuth2UserInfo extends OAuth2UserInfo {
 
     @Override
     public String getEmail() {
-        return (String) attributes.get("email");
+        String email = (String) attributes.get("email");
+        if (email != null && !email.isEmpty()) {
+            return email;
+        }
+        // GitHub users with private emails don't expose their address in the profile.
+        // Fall back to GitHub's canonical noreply format so registration can proceed.
+        Object id = attributes.get("id");
+        String login = (String) attributes.get("login");
+        if (id != null && login != null) {
+            return id + "+" + login + "@users.noreply.github.com";
+        }
+        return null;
     }
 
     @Override
