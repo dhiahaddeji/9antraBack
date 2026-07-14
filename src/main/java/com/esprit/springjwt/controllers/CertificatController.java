@@ -121,7 +121,8 @@ public class CertificatController {
 
                     PdfContentByte canvas = writer.getDirectContentUnder();
                     ClassPathResource bgResource = new ClassPathResource("certif2.jpg");
-                    Image image = Image.getInstance(bgResource.getURL());
+                    byte[] bgBytes = bgResource.getInputStream().readAllBytes();
+                    Image image = Image.getInstance(bgBytes);
                     image.scaleAbsolute(PageSize.A4.rotate()); image.setAbsolutePosition(0, 0);
                     canvas.addImage(image);
 
