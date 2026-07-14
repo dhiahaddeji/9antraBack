@@ -42,10 +42,17 @@ public class FileController {
         if (!resource.exists()) {
             return ResponseEntity.notFound().build();
         }
-        String contentType = Files.probeContentType(filePath);
-        if (contentType == null) contentType = "application/octet-stream";
+        String filename = filePath.getFileName().toString().toLowerCase();
+        String contentType;
+        if (filename.endsWith(".pdf")) {
+            contentType = "application/pdf";
+        } else {
+            contentType = Files.probeContentType(filePath);
+            if (contentType == null) contentType = "application/octet-stream";
+        }
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
+                .header("Content-Disposition", "inline; filename=\"" + filePath.getFileName() + "\"")
                 .body(resource);
     }
 }
