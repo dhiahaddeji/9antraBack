@@ -90,29 +90,25 @@ public class CertificatController {
 
             Random random = new Random();
             int randomNumber = random.nextInt(9999999) + 1;
-            File f = new File(filesFolder + "\\Certifications\\"+nom_formation+" "+month +  " " + randomNumber );
-            if (f.mkdir() == true) {
-                System.out.println("Directory has been created successfully");
-            }
-            else {
-                System.out.println("Directory cannot be created");
-            }
+            String certifDirName = nom_formation + " " + month + " " + randomNumber;
+            File f = new File(filesFolder + "/Certifications/" + certifDirName);
+            f.mkdirs();
+            System.out.println("Certif directory: " + f.getAbsolutePath() + " exists=" + f.exists());
 
             int successCount = 0;
             int failureCount = 0;
             StringBuilder errorMessages = new StringBuilder();
 
-            // for (String s: liste.split(",")) {
             for (String s: liste.split("\n")) {
                 String studentName = s.replace("\n", "").replace("\r", "").trim();
-                
+
                 // Skip empty lines
                 if (studentName.isEmpty()) {
                     continue;
                 }
-                
-                String pdfname = f.getAbsolutePath()+"\\"+studentName+ ".pdf";
-                String relativePath = "Certifications/" + nom_formation + " " + month + " " + randomNumber + "/" + studentName + ".pdf";
+
+                String pdfname = f.getAbsolutePath() + "/" + studentName + ".pdf";
+                String relativePath = "Certifications/" + certifDirName + "/" + studentName + ".pdf";
 
                 Document document = new Document();
                 document.setPageSize(PageSize.A4.rotate());
@@ -124,7 +120,8 @@ public class CertificatController {
                     document.open();
 
                     PdfContentByte canvas = writer.getDirectContentUnder();
-                    Image image = Image.getInstance("src/main/resources/certif2.jpg");
+                    ClassPathResource bgResource = new ClassPathResource("certif2.jpg");
+                    Image image = Image.getInstance(bgResource.getURL());
                     image.scaleAbsolute(PageSize.A4.rotate()); image.setAbsolutePosition(0, 0);
                     canvas.addImage(image);
 
