@@ -189,7 +189,7 @@ public class ProjectsService {
                 project.setProjectname(userm);
                 // Définir le chemin du dossier utilisateur
                 //String userFolderPath = "C:\\Users\\DELL\\Desktop\\The Bridge Front\\9antraFormationFrant\\src\\assets\\projects\\" + userFolderName;
-                String userFolderPath = filesFolder + "\\projects\\" + userFolderName;
+                String userFolderPath = filesFolder + "/projects/" + userFolderName;
                 //  String userFolderPath = "C:\\Users\\Wale\\Desktop\\Final Design\\bridge\\src\\assets\\Projects\\" + userFolderName;
 
 
@@ -203,7 +203,7 @@ public class ProjectsService {
                 }
 
                 // Définir le chemin complet du fichier du projet dans le dossier utilisateur
-                String projectFilePath = userFolderPath + "\\" + timestampedFileName;
+                String projectFilePath = userFolderPath + "/" + timestampedFileName;
                 Path destinationPath = Paths.get(projectFilePath);
 
                 // Copier le fichier du projet dans le dossier utilisateur
@@ -323,7 +323,7 @@ public class ProjectsService {
                 project.setProjectname(userm);
                 // Définir le chemin du dossier utilisateur
                 //String userFolderPath = "C:\\Users\\DELL\\Desktop\\The Bridge Front\\9antraFormationFrant\\src\\assets\\projects\\" + userFolderName;
-                String userFolderPath = filesFolder + "\\projects\\" + userFolderName;
+                String userFolderPath = filesFolder + "/projects/" + userFolderName;
                 //  String userFolderPath = "C:\\Users\\Wale\\Desktop\\Final Design\\bridge\\src\\assets\\Projects\\" + userFolderName;
 
 
@@ -337,7 +337,7 @@ public class ProjectsService {
                 }
 
                 // Définir le chemin complet du fichier du projet dans le dossier utilisateur
-                String projectFilePath = userFolderPath + "\\" + timestampedFileName;
+                String projectFilePath = userFolderPath + "/" + timestampedFileName;
                 Path destinationPath = Paths.get(projectFilePath);
 
                 // Copier le fichier du projet dans le dossier utilisateur
@@ -456,16 +456,16 @@ public class ProjectsService {
 
                 // Définir le chemin du dossier utilisateur
                 //String userFolderPath = "C:\\Users\\DELL\\Desktop\\The Bridge Front\\9antraFormationFrant\\src\\assets\\projects\\" + userFolderName;
-                String userFolderPath = filesFolder + "\\projects\\" + userFolderName;
+                String userFolderPath = filesFolder + "/projects/" + userFolderName;
        //         String userFolderPath = "C:\\Users\\Wale\\Desktop\\Final Design\\bridge\\src\\assets\\Projects\\" + userFolderName;
 
 
                 // Définir le chemin complet du fichier du projet dans le dossier utilisateur
-                String projectFilePath = userFolderPath + "\\" + timestampedFileName;
+                String projectFilePath = userFolderPath + "/" + timestampedFileName;
                 Path destinationPath = Paths.get(projectFilePath);
 
                 // Supprimer l'ancien fichier du projet
-                String oldFilePath = userFolderPath + "\\" + project.getProjectname();
+                String oldFilePath = userFolderPath + "/" + project.getProjectname();
                 Path oldProjectPath = Paths.get(oldFilePath);
                 Files.deleteIfExists(oldProjectPath);
 
@@ -473,7 +473,7 @@ public class ProjectsService {
                 Files.copy(file.getInputStream(), destinationPath, StandardCopyOption.REPLACE_EXISTING);
 
                 // Mettre à jour les informations du projet
-                project.setProjectname(timestampedFileName);
+                project.setProjectname(userFolderName + "/" + timestampedFileName);
 
                 // Enregistrer les modifications du projet
                 Projects updatedProject = projectsRepository.save(project);
@@ -501,10 +501,10 @@ public class ProjectsService {
         // Supprimer le fichier du dossier utilisateur
         String userFolderName = project.getUser().getLastName() + "_" + project.getUser().getId();
         //String userFolderPath = "C:\\Users\\DELL\\Desktop\\The Bridge Front\\9antraFormationFrant\\src\\assets\\projects\\" + userFolderName;
-        String userFolderPath = filesFolder + "\\projects\\" + userFolderName;
+        String userFolderPath = filesFolder + "/projects/" + userFolderName;
        // String userFolderPath = "C:\\Users\\Wale\\Desktop\\Final Design\\bridge\\src\\assets\\Projects\\" + userFolderName;
 
-        String filePath = userFolderPath + "\\" + fileName;
+        String filePath = userFolderPath + "/" + fileName;
         Path projectPath = Paths.get(filePath);
 
         try {
