@@ -100,11 +100,22 @@ public class CertificatController {
             StringBuilder errorMessages = new StringBuilder();
 
             for (String s: liste.split("\n")) {
-                String studentName = s.replace("\n", "").replace("\r", "").trim();
+                String entry = s.replace("\n", "").replace("\r", "").trim();
 
                 // Skip empty lines
-                if (studentName.isEmpty()) {
+                if (entry.isEmpty()) {
                     continue;
+                }
+
+                // Format: "userId:firstName lastName"
+                Long studentUserId = null;
+                String studentName;
+                if (entry.contains(":")) {
+                    String[] parts = entry.split(":", 2);
+                    try { studentUserId = Long.parseLong(parts[0].trim()); } catch (Exception ignored) {}
+                    studentName = parts[1].trim();
+                } else {
+                    studentName = entry;
                 }
 
                 String pdfname = f.getAbsolutePath() + "/" + studentName + ".pdf";
@@ -155,22 +166,23 @@ public class CertificatController {
                     certificat.setMonth(month);
                     certificat.setPath(relativePath);
                     
-                    // Try to find the user by name (first name + last name) - using optimized query
-                    List<User> matchingUsers = userRepository.findByFirstNameAndLastName(studentName);
-                    System.out.println("Looking for user: '" + studentName + "' - Found: " + matchingUsers.size() + " matches");
-                    
-                    if (!matchingUsers.isEmpty()) {
-                        certificat.setUser(matchingUsers.get(0));
-                        certificatRepository.save(certificat);
-                        System.out.println("Certificate saved to database for: " + studentName);
-                        successCount++;
-                    } else {
-                        // If no user found, still save the certificate without user reference
-                        System.out.println("No user found for: " + studentName + ". Saving without user reference.");
-                        certificatRepository.save(certificat);
-                        System.out.println("Certificate saved to database (without user reference) for: " + studentName);
-                        successCount++;
+                    // Find user by ID (preferred) or fall back to name match
+                    User matchedUser = null;
+                    if (studentUserId != null) {
+                        matchedUser = userRepository.findById(studentUserId).orElse(null);
                     }
+                    if (matchedUser == null) {
+                        List<User> matchingUsers = userRepository.findByFirstNameAndLastName(studentName);
+                        if (!matchingUsers.isEmpty()) matchedUser = matchingUsers.get(0);
+                    }
+                    System.out.println("User lookup for '" + studentName + "' (id=" + studentUserId + "): " + (matchedUser != null ? "found id=" + matchedUser.getId() : "NOT FOUND"));
+
+                    if (matchedUser != null) {
+                        certificat.setUser(matchedUser);
+                    }
+                    certificatRepository.save(certificat);
+                    System.out.println("Certificate saved" + (matchedUser != null ? " for user id=" + matchedUser.getId() : " WITHOUT user"));
+                    successCount++;
 
                 } catch (Exception e) {
                     System.err.println("Error generating certificate for: " + studentName);
@@ -956,15 +968,12 @@ group.setCertificatesGenerated(false);
     }
 
     @GetMapping("/UserCertificates/{userId}")
-    public ResponseEntity<List<Certificat>> getUserCertificates(
-            @PathVariable Long userId
-    ) {
+    public ResponseEntity<List<Certificat>> getUserCertificates(@PathVariable Long userId) {
         try {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
-
-            List<Certificat> userCertificates = user.getCertificats();
-
+            List<Certificat> userCertificates = certificatRepository.findByUser(user);
+            System.out.println("Certificates for user " + userId + ": " + userCertificates.size());
             return ResponseEntity.ok(userCertificates);
         } catch (Exception e) {
             e.printStackTrace();
