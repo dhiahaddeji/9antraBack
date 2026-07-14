@@ -63,9 +63,11 @@ public class Groups implements Serializable {
 
 
 
+    @JsonIgnore
     @ManyToMany(mappedBy = "groups")
     private List<User> etudiants = new ArrayList<>();
 
+	@JsonIgnore
 	@OneToMany(mappedBy = "groups")
 	private Set<Record> records;
 
