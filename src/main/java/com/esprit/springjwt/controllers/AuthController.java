@@ -97,7 +97,7 @@ public class AuthController {
 
         User testEmail = userRepository.findByEmail(user.getUsername());
         if(testEmail != null) {
-            return ResponseEntity.ok("Email already used !");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new MessageResponse("Email already used!"));
         }else {
             User newUser = new User();
             newUser.setFirstName(user.getFirstName());

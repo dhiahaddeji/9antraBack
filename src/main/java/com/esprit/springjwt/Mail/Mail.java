@@ -25,6 +25,7 @@ public class Mail {
      JavaMailSender javaMailSender;
 	 
 	 @Value("${spring.mail.username}") private String sender;
+	 @Value("${site.base.url.https:http://localhost:4200}") private String siteBaseUrl;
 	 private final TemplateEngine templateEngine;
 		
 		public Mail(TemplateEngine templateEngine) {
@@ -36,7 +37,7 @@ public class Mail {
 
 		Context context=new Context();
 		context.setVariable("token", Token);
-		context.setVariable("link","http://localhost:4200/verifyemail");
+		context.setVariable("link", siteBaseUrl + "/verifyemail");
 		
 		String body = templateEngine.process("ForgotPAssword", context);
 		String senderName = "9angraTraining";

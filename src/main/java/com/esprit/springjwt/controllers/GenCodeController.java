@@ -55,12 +55,13 @@ public class GenCodeController {
     if (userRepository.existsByUsername(genCode.getEmail())) {
       User user =userRepository.findByEmail(genCode.getEmail()) ;
       gencodeRepository.save(genCode);
-      
-      System.out.println("========================================");
-      System.out.println("CODE DE VÉRIFICATION POUR: " + genCode.getEmail());
-      System.out.println("CODE: " + genCode.getCode());
-      System.out.println("========================================");
-      
+
+      try {
+        mail.SendForgotPassword(user, genCode.getCode());
+      } catch(Exception e) {
+        System.out.println("WARNING: Could not send reset email to " + genCode.getEmail() + ": " + e.getMessage());
+      }
+
       return ResponseEntity.ok(new MessageResponse("Code generated successfully!"));
     } else {
       System.out.println("========================================");
