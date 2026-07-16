@@ -38,6 +38,7 @@ public class ResponseService {
 			responses.add(response);
 			forum.setResponses(responses);
 			forumRepository.save(forum);
+			webSocketService.notifyFront("forum");
 		}
 	}
 
