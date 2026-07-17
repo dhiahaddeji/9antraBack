@@ -100,26 +100,27 @@ public class CertificatController {
             StringBuilder errorMessages = new StringBuilder();
 
             for (String s: liste.split("\n")) {
-                String entry = s.replace("\n", "").replace("\r", "").trim();
+                String studentName = s.replace("\n", "").replace("\r", "").trim();
 
                 // Skip empty lines
-                if (entry.isEmpty()) {
+                if (studentName.isEmpty()) {
                     continue;
                 }
 
-                // Format: "userId:firstName lastName"
+                // Parse studentName to extract ID and display name
                 Long studentUserId = null;
-                String studentName;
-                if (entry.contains(":")) {
-                    String[] parts = entry.split(":", 2);
-                    try { studentUserId = Long.parseLong(parts[0].trim()); } catch (Exception ignored) {}
-                    studentName = parts[1].trim();
-                } else {
-                    studentName = entry;
+                String displayName = studentName; // Default: full string
+                
+                if (studentName.contains(":")) {
+                    String[] parts = studentName.split(":", 2);
+                    try {
+                        studentUserId = Long.parseLong(parts[0].trim());
+                        displayName = parts[1].trim();
+                    } catch (NumberFormatException ignored) {}
                 }
 
-                String pdfname = f.getAbsolutePath() + "/" + studentName + ".pdf";
-                String relativePath = "Certifications/" + certifDirName + "/" + studentName + ".pdf";
+                String pdfname = f.getAbsolutePath() + "/" + displayName + ".pdf";
+                String relativePath = "Certifications/" + certifDirName + "/" + displayName + ".pdf";
 
                 Document document = new Document();
                 document.setPageSize(PageSize.A4.rotate());
@@ -137,12 +138,10 @@ public class CertificatController {
                     image.scaleAbsolute(PageSize.A4.rotate()); image.setAbsolutePosition(0, 0);
                     canvas.addImage(image);
 
+                    float pos=(document.getPageSize().getWidth()/2)-(displayName.length()*18/2);
+                    FixText(displayName,"savoyeplain.ttf", "Savoye", pos,240, writer, 60);
 
-                    float pos=(document.getPageSize().getWidth()/2)-(studentName.length()*18/2);
-                    FixText(studentName,"savoyeplain.ttf", "Savoye", pos,240, writer, 60);
-
-
-                    certificate_footer(writer, studentName,periode,nom_formation,month);
+                    certificate_footer(writer, displayName,periode,nom_formation,month);
 
                     FixText(date,"poppins.regular.ttf", "Poppins",280,100, writer, 13);
 
@@ -157,7 +156,7 @@ public class CertificatController {
                     document.close();
                     writer.close();
                     fo.close();
-                    System.out.println("Certificate PDF created for: " + studentName);
+                    System.out.println("Certificate PDF created for: " + displayName);
 
                     // SAVE TO DATABASE
                     Certificat certificat = new Certificat();
@@ -166,48 +165,61 @@ public class CertificatController {
                     certificat.setMonth(month);
                     certificat.setPath(relativePath);
                     
-                    // Try to find the user by username/email
-                    String studentNameTrimmed = studentName.trim();
-                    User user = userRepository.findByUsername(studentNameTrimmed);
-                    System.out.println("Looking for user with username: '" + studentNameTrimmed + "'");
-                    System.out.println("User found: " + (user != null ? "YES - ID: " + user.getId() + ", Name: " + user.getFirstName() + " " + user.getLastName() : "NO"));
+                    User matchedUser = null;
                     
-                    if (user != null) {
-                        certificat.setUser(user);
-                        Certificat savedCert = certificatRepository.save(certificat);
-                        System.out.println("✓ Certificate saved to database for user ID: " + user.getId() + " (" + studentNameTrimmed + ")");
-                        System.out.println("  Saved certificate ID: " + savedCert.getIdCertificat() + ", Linked user_id: " + (savedCert.getUser() != null ? savedCert.getUser().getId() : "NULL"));
-                        successCount++;
-                    } else {
-                        // If no user found, try by full name
-                        System.out.println("⚠ User not found by username. Trying by full name: " + studentNameTrimmed);
-                        List<User> matchingUsers = userRepository.findByFirstNameAndLastName(studentNameTrimmed);
-                        System.out.println("Found " + matchingUsers.size() + " users by full name");
-                        if (!matchingUsers.isEmpty()) {
-                            certificat.setUser(matchingUsers.get(0));
-                            certificatRepository.save(certificat);
-                            System.out.println("✓ Certificate saved to database for: " + studentNameTrimmed);
-                            successCount++;
-                        } else {
-                            // If still no user found, save without user reference
-                            System.out.println("✗ No user found for: " + studentNameTrimmed + ". Saving certificate WITHOUT user link!");
-                            certificatRepository.save(certificat);
-                            System.out.println("⚠ Certificate saved to database (without user reference) for: " + studentNameTrimmed);
-                            successCount++;
+                    // Try to find by ID first if available
+                    if (studentUserId != null) {
+                        try {
+                            matchedUser = userRepository.findById(studentUserId).orElse(null);
+                            if (matchedUser != null) {
+                                System.out.println("DEBUG: ✓ Found user by ID " + studentUserId);
+                            } else {
+                                System.out.println("DEBUG: ✗ No user found with ID " + studentUserId);
+                            }
+                        } catch (Exception e) {
+                            System.out.println("DEBUG: Error finding user by ID: " + e.getMessage());
                         }
                     }
+                    
+                    // If not found by ID, try by username
                     if (matchedUser == null) {
-                        List<User> matchingUsers = userRepository.findByFirstNameAndLastName(studentName);
-                        if (!matchingUsers.isEmpty()) matchedUser = matchingUsers.get(0);
+                        try {
+                            matchedUser = userRepository.findByUsername(displayName);
+                            if (matchedUser != null) {
+                                System.out.println("DEBUG: ✓ Found user by username '" + displayName + "'");
+                            } else {
+                                System.out.println("DEBUG: ✗ No user found with username '" + displayName + "'");
+                            }
+                        } catch (Exception e) {
+                            System.out.println("DEBUG: Error finding user by username: " + e.getMessage());
+                        }
                     }
-                    System.out.println("User lookup for '" + studentName + "' (id=" + studentUserId + "): " + (matchedUser != null ? "found id=" + matchedUser.getId() : "NOT FOUND"));
+                    
+                    // If still not found, try by full name
+                    if (matchedUser == null) {
+                        try {
+                            List<User> matchingUsers = userRepository.findByFirstNameAndLastName(displayName);
+                            if (matchingUsers != null && !matchingUsers.isEmpty()) {
+                                matchedUser = matchingUsers.get(0);
+                                System.out.println("DEBUG: ✓ Found user by full name '" + displayName + "' (ID: " + matchedUser.getId() + ")");
+                            } else {
+                                System.out.println("DEBUG: ✗ No user found with name '" + displayName + "'");
+                            }
+                        } catch (Exception e) {
+                            System.out.println("DEBUG: Error finding user by full name: " + e.getMessage());
+                        }
+                    }
 
                     if (matchedUser != null) {
                         certificat.setUser(matchedUser);
+                        Certificat savedCert = certificatRepository.save(certificat);
+                        System.out.println("✓ Certificate saved for user id=" + matchedUser.getId() + " (" + matchedUser.getUsername() + ")");
+                        successCount++;
+                    } else {
+                        certificatRepository.save(certificat);
+                        System.out.println("⚠ Certificate saved WITHOUT user link for: " + displayName);
+                        failureCount++;
                     }
-                    certificatRepository.save(certificat);
-                    System.out.println("Certificate saved" + (matchedUser != null ? " for user id=" + matchedUser.getId() : " WITHOUT user"));
-                    successCount++;
 
                 } catch (Exception e) {
                     System.err.println("Error generating certificate for: " + studentName);

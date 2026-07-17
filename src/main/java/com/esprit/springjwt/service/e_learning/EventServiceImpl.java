@@ -47,7 +47,6 @@ public class EventServiceImpl implements IEventService{
     @Override
     public Event addEvent(MultipartFile file, Event e) {
 
-
         String contentType = file.getContentType();
         if (contentType != null && (
                 contentType.equals("image/jpeg") ||
@@ -55,29 +54,43 @@ public class EventServiceImpl implements IEventService{
                 contentType.equals("image/png") ||
                 contentType.equals("image/avif")
         )) {
-            boolean isExit = new File(filesFolder + "/Events/").exists();
-            if(!isExit)
-                new File (filesFolder + "/Events/").mkdir();
+            File eventsDir = new File(filesFolder + "/Events/");
+            if (!eventsDir.exists()) {
+                boolean dirCreated = eventsDir.mkdirs(); // Use mkdirs() instead of mkdir()
+                if (!dirCreated) {
+                    throw new RuntimeException("Failed to create Events directory at: " + eventsDir.getAbsolutePath());
+                }
+                log.info("✓ Created Events directory: {}", eventsDir.getAbsolutePath());
+            }
 
             String fileName = file.getOriginalFilename();
-
             LocalDateTime now = LocalDateTime.now();
             String timestamp = now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
             String timestampedFileName = timestamp + "_" + fileName;
+            String filePath = filesFolder + "/Events/" + timestampedFileName;
 
             try {
-                System.out.print(timestampedFileName + "Uploading...\n");
-                FileUtils.writeByteArrayToFile(new File(filesFolder + "/Events/" + timestampedFileName),file.getBytes());
-                System.out.print("\nUploaded !!!\n");
+                log.info("📁 Saving event image to: {}", filePath);
+                FileUtils.writeByteArrayToFile(new File(filePath), file.getBytes());
+                log.info("✓ Image uploaded successfully: {}", timestampedFileName);
             } catch (IOException ex) {
+                log.error("✗ Error saving image: {}", ex.getMessage());
                 ex.printStackTrace();
+                throw new RuntimeException("Failed to save event image: " + ex.getMessage());
             }
 
             e.setImage(timestampedFileName);
-            notificationService.sendNotifToAllUsers("Exciting Announcement: New Event Coming Soon! Register Now, Limited Spots Available!", "./events/eventDetails/"+e.getId(), "New event");
-            return eventRepository.save(e);
-        } else  {
-            throw new IllegalArgumentException("Invalid file type");
+            Event savedEvent = eventRepository.save(e);
+            log.info("✓ Event saved to database with image: {}", timestampedFileName);
+            
+            notificationService.sendNotifToAllUsers(
+                "Exciting Announcement: New Event Coming Soon! Register Now, Limited Spots Available!", 
+                "./events/eventDetails/"+e.getId(), 
+                "New event"
+            );
+            return savedEvent;
+        } else {
+            throw new IllegalArgumentException("Invalid file type. Only JPEG, JPG, PNG, and AVIF are allowed.");
         }
     }
 
@@ -87,43 +100,54 @@ public class EventServiceImpl implements IEventService{
             String contentType = file.getContentType();
             if (contentType != null && (
                     contentType.equals("image/jpeg") ||
-                            contentType.equals("image/jpg") ||
-                            contentType.equals("image/png") ||
-                            contentType.equals("image/avif")
+                    contentType.equals("image/jpg") ||
+                    contentType.equals("image/png") ||
+                    contentType.equals("image/avif")
             )) {
-                boolean isExit = new File(filesFolder + "/Events/").exists();
-                if (!isExit)
-                    throw new FileNotFoundException("Events File not found !!");
+                File eventsDir = new File(filesFolder + "/Events/");
+                if (!eventsDir.exists()) {
+                    boolean dirCreated = eventsDir.mkdirs(); // Use mkdirs() instead of mkdir()
+                    if (!dirCreated) {
+                        throw new FileNotFoundException("Failed to create Events directory at: " + eventsDir.getAbsolutePath());
+                    }
+                }
 
-
-                //Deleting old image
-                log.info("Deleting...");
-                File originalImage = new File(filesFolder + "/Events/" + eventRepository.getImageById(e.getId()));
-                if (originalImage.delete())
-                    log.info("image deleted successfully");
-                else
-                    log.error("Error while deleting old image");
+                // Deleting old image
+                log.info("🗑️  Deleting old image...");
+                String oldImageName = eventRepository.getImageById(e.getId());
+                if (oldImageName != null && !oldImageName.isEmpty()) {
+                    File originalImage = new File(filesFolder + "/Events/" + oldImageName);
+                    if (originalImage.exists() && originalImage.delete()) {
+                        log.info("✓ Old image deleted successfully: {}", oldImageName);
+                    } else {
+                        log.warn("⚠️  Could not delete old image: {}", oldImageName);
+                    }
+                }
 
                 String fileName = file.getOriginalFilename();
-
                 LocalDateTime now = LocalDateTime.now();
                 String timestamp = now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
                 String timestampedFileName = timestamp + "_" + fileName;
+                String filePath = filesFolder + "/Events/" + timestampedFileName;
 
                 try {
-                    System.out.print(timestampedFileName + "Uploading...\n");
-                    FileUtils.writeByteArrayToFile(new File(filesFolder + "/Events/" + timestampedFileName), file.getBytes());
-                    System.out.print("\nUploaded !!!\n");
+                    log.info("📁 Saving new event image to: {}", filePath);
+                    FileUtils.writeByteArrayToFile(new File(filePath), file.getBytes());
+                    log.info("✓ New image uploaded successfully: {}", timestampedFileName);
                 } catch (IOException ex) {
+                    log.error("✗ Error saving new image: {}", ex.getMessage());
                     ex.printStackTrace();
+                    throw new RuntimeException("Failed to save event image: " + ex.getMessage());
                 }
 
                 e.setImage(timestampedFileName);
-                return eventRepository.save(e);
+                Event updatedEvent = eventRepository.save(e);
+                log.info("✓ Event updated with new image: {}", timestampedFileName);
+                return updatedEvent;
             } else {
-                throw new IllegalArgumentException("Invalid file type");
+                throw new IllegalArgumentException("Invalid file type. Only JPEG, JPG, PNG, and AVIF are allowed.");
             }
-        }else {
+        } else {
             throw new Exception("Invalid event");
         }
     }

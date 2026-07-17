@@ -41,26 +41,31 @@ public class EventController {
 
     @PutMapping()
     public ResponseEntity<?> updateEvent(@RequestParam("file") MultipartFile file, @RequestParam String event) throws Exception {
-        if(event.length() != 0) {
-            ObjectMapper objectMapper = new ObjectMapper();
-            objectMapper.registerModule(new JavaTimeModule());
-            Event e = objectMapper.readValue(event,Event.class);
-            return new ResponseEntity<>(eventService.updateEvent(file, e), HttpStatus.OK);
+        if(event.length() != 0 && file != null && !file.isEmpty()) {
+            try {
+                ObjectMapper objectMapper = new ObjectMapper();
+                objectMapper.registerModule(new JavaTimeModule());
+                Event e = objectMapper.readValue(event, Event.class);
+                Event updatedEvent = eventService.updateEvent(file, e);
+                return new ResponseEntity<>(updatedEvent, HttpStatus.OK);
+            } catch (Exception e) {
+                return new ResponseEntity<>("Error updating event: " + e.getMessage(), HttpStatus.BAD_REQUEST);
+            }
         }
-
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        return new ResponseEntity<>("Invalid event data or file", HttpStatus.BAD_REQUEST);
     }
 
     @PutMapping("/updateWithOutImage")
-    public ResponseEntity<?> updateEvent(@RequestParam String event) throws Exception {
-        if(event.length() != 0) {
-            ObjectMapper objectMapper = new ObjectMapper();
-            objectMapper.registerModule(new JavaTimeModule());
-            Event e = objectMapper.readValue(event,Event.class);
-            return new ResponseEntity<>(eventService.updateEventWithoutImage(e), HttpStatus.OK);
+    public ResponseEntity<?> updateEventWithoutImage(@RequestBody Event event) throws Exception {
+        if(event != null && event.getId() != null) {
+            try {
+                Event updatedEvent = eventService.updateEventWithoutImage(event);
+                return new ResponseEntity<>(updatedEvent, HttpStatus.OK);
+            } catch (Exception e) {
+                return new ResponseEntity<>("Error updating event: " + e.getMessage(), HttpStatus.BAD_REQUEST);
+            }
         }
-
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        return new ResponseEntity<>("Invalid event data", HttpStatus.NO_CONTENT);
     }
 
     @PutMapping("/registerToEvent/{eventId}")
