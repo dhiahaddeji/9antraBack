@@ -53,7 +53,7 @@ public class GenCodeController {
 	  System.out.println("========================================");
 	  
     if (userRepository.existsByUsername(genCode.getEmail())) {
-      User user =userRepository.findByEmail(genCode.getEmail()) ;
+      User user = userRepository.findByUsername(genCode.getEmail());
       gencodeRepository.save(genCode);
 
       try {
