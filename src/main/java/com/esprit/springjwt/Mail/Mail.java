@@ -39,7 +39,7 @@ public class Mail {
 		context.setVariable("token", Token);
 		context.setVariable("link", siteBaseUrl + "/verifyemail");
 		
-		String body = templateEngine.process("ForgotPAssword", context);
+		String body = templateEngine.process("ForgotPassword", context);
 		String senderName = "9angraTraining";
          
 		MimeMessage message = javaMailSender.createMimeMessage();
