@@ -26,9 +26,16 @@ public class Record implements Serializable {
     @ManyToOne(fetch = FetchType.EAGER)
     private Groups groups;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
+
+    @javax.persistence.Transient
+    @com.fasterxml.jackson.annotation.JsonProperty("idUser")
+    public Long getIdUser() {
+        return user != null ? user.getId() : null;
+    }
    
 }
 

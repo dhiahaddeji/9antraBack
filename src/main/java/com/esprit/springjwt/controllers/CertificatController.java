@@ -90,29 +90,36 @@ public class CertificatController {
 
             Random random = new Random();
             int randomNumber = random.nextInt(9999999) + 1;
-            File f = new File(filesFolder + "\\Certifications\\"+nom_formation+" "+month +  " " + randomNumber );
-            if (f.mkdirs() == true) {
-                System.out.println("Directory has been created successfully");
-            }
-            else {
-                System.out.println("Directory cannot be created");
-            }
+            String certifDirName = nom_formation + " " + month + " " + randomNumber;
+            File f = new File(filesFolder + "/Certifications/" + certifDirName);
+            f.mkdirs();
+            System.out.println("Certif directory: " + f.getAbsolutePath() + " exists=" + f.exists());
 
             int successCount = 0;
             int failureCount = 0;
             StringBuilder errorMessages = new StringBuilder();
 
-            // for (String s: liste.split(",")) {
             for (String s: liste.split("\n")) {
-                String studentName = s.replace("\n", "").replace("\r", "").trim();
-                
+                String entry = s.replace("\n", "").replace("\r", "").trim();
+
                 // Skip empty lines
-                if (studentName.isEmpty()) {
+                if (entry.isEmpty()) {
                     continue;
                 }
-                
-                String pdfname = f.getAbsolutePath()+"\\"+studentName+ ".pdf";
-                String relativePath = "Certifications/" + nom_formation + " " + month + " " + randomNumber + "/" + studentName + ".pdf";
+
+                // Format: "userId:firstName lastName"
+                Long studentUserId = null;
+                String studentName;
+                if (entry.contains(":")) {
+                    String[] parts = entry.split(":", 2);
+                    try { studentUserId = Long.parseLong(parts[0].trim()); } catch (Exception ignored) {}
+                    studentName = parts[1].trim();
+                } else {
+                    studentName = entry;
+                }
+
+                String pdfname = f.getAbsolutePath() + "/" + studentName + ".pdf";
+                String relativePath = "Certifications/" + certifDirName + "/" + studentName + ".pdf";
 
                 Document document = new Document();
                 document.setPageSize(PageSize.A4.rotate());
@@ -124,7 +131,9 @@ public class CertificatController {
                     document.open();
 
                     PdfContentByte canvas = writer.getDirectContentUnder();
-                    Image image = Image.getInstance("src/main/resources/certif2.jpg");
+                    ClassPathResource bgResource = new ClassPathResource("certif2.jpg");
+                    byte[] bgBytes = bgResource.getInputStream().readAllBytes();
+                    Image image = Image.getInstance(bgBytes);
                     image.scaleAbsolute(PageSize.A4.rotate()); image.setAbsolutePosition(0, 0);
                     canvas.addImage(image);
 
@@ -187,6 +196,18 @@ public class CertificatController {
                             successCount++;
                         }
                     }
+                    if (matchedUser == null) {
+                        List<User> matchingUsers = userRepository.findByFirstNameAndLastName(studentName);
+                        if (!matchingUsers.isEmpty()) matchedUser = matchingUsers.get(0);
+                    }
+                    System.out.println("User lookup for '" + studentName + "' (id=" + studentUserId + "): " + (matchedUser != null ? "found id=" + matchedUser.getId() : "NOT FOUND"));
+
+                    if (matchedUser != null) {
+                        certificat.setUser(matchedUser);
+                    }
+                    certificatRepository.save(certificat);
+                    System.out.println("Certificate saved" + (matchedUser != null ? " for user id=" + matchedUser.getId() : " WITHOUT user"));
+                    successCount++;
 
                 } catch (Exception e) {
                     System.err.println("Error generating certificate for: " + studentName);
@@ -972,9 +993,7 @@ group.setCertificatesGenerated(false);
     }
 
     @GetMapping("/UserCertificates/{userId}")
-    public ResponseEntity<List<Certificat>> getUserCertificates(
-            @PathVariable Long userId
-    ) {
+    public ResponseEntity<List<Certificat>> getUserCertificates(@PathVariable Long userId) {
         try {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("User not found"));

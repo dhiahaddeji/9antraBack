@@ -18,9 +18,9 @@ public class WebSocketConfiguration implements WebSocketMessageBrokerConfigurer{
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/sba-websocket-chat").setAllowedOrigins("http://localhost:4200", "http://localhost:4200/").withSockJS();
-        registry.addEndpoint("/sba-websocket-notification").setAllowedOrigins("http://localhost:4200", "http://localhost:4200/").withSockJS();
-        registry.addEndpoint("/sba-websocket-forum").setAllowedOrigins("http://localhost:4200", "http://localhost:4200/").withSockJS();
+        registry.addEndpoint("/sba-websocket-chat").setAllowedOriginPatterns("*").withSockJS();
+        registry.addEndpoint("/sba-websocket-notification").setAllowedOriginPatterns("*").withSockJS();
+        registry.addEndpoint("/sba-websocket-forum").setAllowedOriginPatterns("*").withSockJS();
     }
 
 }

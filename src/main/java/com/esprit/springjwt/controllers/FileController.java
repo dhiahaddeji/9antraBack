@@ -36,16 +36,34 @@ public class FileController {
         // path example: "Certifications/Grafana June 2026 4649761/test test.pdf"
         return serveFromFolder(Paths.get(filesFolder, path));
     }
+    @GetMapping("/Projects")
+    public ResponseEntity<Resource> serveProject(@RequestParam String path) throws IOException {
+        return serveFromFolder(Paths.get(filesFolder, "projects").resolve(path));
+    }
+
+    @GetMapping("/Certifications")
+    public ResponseEntity<Resource> serveCertification(@RequestParam String path) throws IOException {
+        // path = "Certifications/Formation Month 12345/Name.pdf"
+        return serveFromFolder(Paths.get(filesFolder).resolve(path));
+    }
 
     private ResponseEntity<Resource> serveFromFolder(Path filePath) throws IOException {
         Resource resource = new FileSystemResource(filePath);
         if (!resource.exists()) {
             return ResponseEntity.notFound().build();
         }
-        String contentType = Files.probeContentType(filePath);
-        if (contentType == null) contentType = "application/octet-stream";
+        String filename = filePath.getFileName().toString().toLowerCase();
+        String contentType;
+        if (filename.endsWith(".pdf")) {
+            contentType = "application/pdf";
+        } else {
+            contentType = Files.probeContentType(filePath);
+            if (contentType == null) contentType = "application/octet-stream";
+        }
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
+                .header("Content-Disposition", "inline; filename=\"" + filePath.getFileName() + "\"")
                 .body(resource);
     }
 }
+

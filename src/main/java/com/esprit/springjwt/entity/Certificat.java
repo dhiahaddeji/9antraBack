@@ -24,6 +24,7 @@ public class Certificat {
     private LocalDateTime date = LocalDateTime.now();
     @ManyToOne
     @JoinColumn(name = "user_id")
+    @JsonIgnore
     private User user;
     private String periode;
     private String month;
