@@ -3,7 +3,9 @@ package com.esprit.springjwt.controllers;
 import com.esprit.springjwt.dto.CourseStatsDto;
 import com.esprit.springjwt.entity.*;
 import com.esprit.springjwt.payload.request.PaginateInfoUser;
+import com.esprit.springjwt.payload.response.MessageResponse;
 import com.esprit.springjwt.repository.FormateurRepository;
+import com.esprit.springjwt.repository.RoleRepository;
 import com.esprit.springjwt.repository.UserRepository;
 import com.esprit.springjwt.security.services.UserDetailsImpl;
 import com.esprit.springjwt.service.FormateurService;
@@ -43,6 +45,9 @@ public class UserController {
     @Autowired
     private FormateurService formateurService;
 
+    @Autowired
+    private RoleRepository roleRepository;
+
 
     //get All Users
     @RequestMapping("/all")
@@ -56,6 +61,24 @@ public class UserController {
     @GetMapping("/changeEnabledUser/{id}")
     public User changeEnabledUser(@PathVariable Long id) {
         return userService.changeEnabledUser(id);
+    }
+
+    @PutMapping("/change-role/{id}")
+    public ResponseEntity<?> changeRole(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
+        String roleName = body.get("role");
+        return userRepository.findById(id).map(user -> {
+            ERole eRole;
+            try { eRole = ERole.valueOf(roleName); } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(new MessageResponse("Invalid role: " + roleName));
+            }
+            return roleRepository.findByName(eRole).map(role -> {
+                java.util.Set<Role> roles = new java.util.HashSet<>();
+                roles.add(role);
+                user.setRoles(roles);
+                userRepository.save(user);
+                return ResponseEntity.ok(new MessageResponse("Role updated successfully"));
+            }).orElse(ResponseEntity.badRequest().body(new MessageResponse("Role not found")));
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/finduserbyid/{id}")

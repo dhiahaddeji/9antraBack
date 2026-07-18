@@ -284,6 +284,56 @@ public class AuthController {
 
 
 
+    @PostMapping("/create-admin")
+    public ResponseEntity<?> createAdmin(@RequestBody User req) {
+        if (userRepository.existsByUsername(req.getUsername())) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Email already taken!"));
+        }
+        User user = new User();
+        user.setFirstName(req.getFirstName());
+        user.setLastName(req.getLastName());
+        user.setUsername(req.getUsername());
+        user.setPassword(encoder.encode(req.getPassword()));
+        user.setNumeroTel(req.getNumeroTel());
+        user.setProvider(local);
+        user.setEnabled(1);
+        user.setEmail_verified_at(new Date());
+        user.setImage("avatarStudent.png");
+        Set<Role> roles = new HashSet<>();
+        Optional<Role> roleOpt = roleRepository.findByName(ERole.ADMINISTRATEUR);
+        if (!roleOpt.isPresent()) return ResponseEntity.badRequest().body(new MessageResponse("Role not found"));
+        roles.add(roleOpt.get());
+        user.setRoles(roles);
+        userRepository.save(user);
+        return ResponseEntity.ok(new MessageResponse("Admin created successfully!"));
+    }
+
+    @PostMapping("/create-student")
+    public ResponseEntity<?> createStudent(@RequestBody User req) {
+        if (userRepository.existsByUsername(req.getUsername())) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Email already taken!"));
+        }
+        User user = new User();
+        user.setFirstName(req.getFirstName());
+        user.setLastName(req.getLastName());
+        user.setUsername(req.getUsername());
+        user.setPassword(encoder.encode(req.getPassword()));
+        user.setNumeroTel(req.getNumeroTel());
+        user.setCountry(req.getCountry());
+        user.setTypeFormation(req.getTypeFormation());
+        user.setProvider(local);
+        user.setEnabled(1);
+        user.setEmail_verified_at(new Date());
+        user.setImage("avatarStudent.png");
+        Set<Role> roles = new HashSet<>();
+        Optional<Role> roleOpt = roleRepository.findByName(ERole.ETUDIANT);
+        if (!roleOpt.isPresent()) return ResponseEntity.badRequest().body(new MessageResponse("Role not found"));
+        roles.add(roleOpt.get());
+        user.setRoles(roles);
+        userRepository.save(user);
+        return ResponseEntity.ok(new MessageResponse("Student created successfully!"));
+    }
+
     @PostMapping("/signupstudent/{idRequest}")
     public ResponseEntity<?> registerUserStudent(@PathVariable("idRequest") Long idRequest
     ) throws IOException {
