@@ -25,6 +25,12 @@ public class FileController {
         return serveFromFolder(Paths.get(filesFolder, "Documents", filename));
     }
 
+    @GetMapping("/Courses/{courseId}/{filename}")
+    public ResponseEntity<Resource> serveCourseFile(@PathVariable String courseId,
+                                                     @PathVariable String filename) throws IOException {
+        return serveFromFolder(Paths.get(filesFolder, "Courses_E_Learning", "Course_" + courseId, filename));
+    }
+
     @GetMapping("/Records/{date}/{filename}")
     public ResponseEntity<Resource> serveRecord(@PathVariable String date,
                                                  @PathVariable String filename) throws IOException {
