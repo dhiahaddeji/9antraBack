@@ -264,15 +264,9 @@ public class AuthController {
         }
         user.setRoles(roles);
         user.setCountry(country);
-        // Auto-enable FORMATEUR accounts BEFORE saving
-        user.setEnabled(1);
+        user.setEnabled(0);
 
         User savedUser = userRepository.save(user);
-        
-        // Verify enabled status was saved
-        if (savedUser.getEnabled() != 1) {
-            System.err.println("WARNING: User enabled status not saved correctly!");
-        }
 
         Formateur formateur = new Formateur();
         formateur.setCV(filesName);
