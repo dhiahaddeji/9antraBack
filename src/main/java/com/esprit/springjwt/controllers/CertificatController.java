@@ -58,6 +58,9 @@ public class CertificatController {
     @Value("${files.folder}")
     String filesFolder;
 
+    @Value("${site.base.url.https:http://localhost:4200}")
+    private String siteBaseUrl;
+
     private static String rootPath = ClassPathResource.class.getClassLoader().getResource("").getPath();
 
     @PostMapping("/Generer")
@@ -431,6 +434,131 @@ public class CertificatController {
 
 
 
+
+    @PutMapping("/close-group/{groupId}")
+    @Transactional
+    public ResponseEntity<?> closeGroupAndGenerateCertificates(
+            @PathVariable Long groupId,
+            @RequestParam String month) {
+        try {
+            Groups group = groupsRepository.findById(groupId)
+                    .orElseThrow(() -> new RuntimeException("Group not found"));
+
+            group.setSessionClosed(true);
+            group.setClosedDate(new java.util.Date());
+
+            Formation formation = group.getFormation();
+            if (formation == null) {
+                return ResponseEntity.badRequest().body("Group has no formation assigned");
+            }
+            String nom_formation = formation.getNomFormation();
+            String periode = group.getPeriod() != null ? group.getPeriod() : "1 month";
+
+            List<User> allStudents = group.getEtudiants();
+            Map<Long, Boolean> presenceMap = group.getUserPresenceStatus();
+
+            List<User> eligible = allStudents.stream()
+                    .filter(u -> u.getEnabled() == 1
+                            && (presenceMap.isEmpty() || Boolean.TRUE.equals(presenceMap.get(u.getId()))))
+                    .collect(Collectors.toList());
+
+            int successCount = 0;
+            int skippedCount = allStudents.size() - eligible.size();
+            List<String> generatedFor = new ArrayList<>();
+
+            if (!eligible.isEmpty() && !group.isCertificatesGenerated()) {
+                File certDir = new File(filesFolder + File.separator + "Certifications"
+                        + File.separator + nom_formation + " " + month);
+                certDir.mkdirs();
+
+                for (User user : eligible) {
+                    if (user.getCertificats() != null && !user.getCertificats().isEmpty()) {
+                        skippedCount++;
+                        continue;
+                    }
+                    String fullName = user.getFirstName() + " " + user.getLastName();
+                    String relativePath = "Certifications/" + nom_formation + " " + month
+                            + "/_" + user.getId() + "_" + user.getFirstName() + "_" + user.getLastName() + ".pdf";
+                    String pdfname = filesFolder + File.separator
+                            + relativePath.replace("/", File.separator);
+
+                    try {
+                        Document document = new Document();
+                        document.setPageSize(PageSize.A4.rotate());
+                        FileOutputStream fo = new FileOutputStream(new File(pdfname));
+                        PdfWriter writer = PdfWriter.getInstance(document, fo);
+                        document.open();
+
+                        PdfContentByte canvas = writer.getDirectContentUnder();
+                        ClassPathResource bgResource = new ClassPathResource("certif2.jpg");
+                        byte[] bgBytes = bgResource.getInputStream().readAllBytes();
+                        Image bgImage = Image.getInstance(bgBytes);
+                        bgImage.scaleAbsolute(PageSize.A4.rotate());
+                        bgImage.setAbsolutePosition(0, 0);
+                        canvas.addImage(bgImage);
+
+                        float pos = (document.getPageSize().getWidth() / 2) - (fullName.length() * 18 / 2);
+                        FixText(fullName, "savoyeplain.ttf", "Savoye", pos, 240, writer, 60);
+                        certificate_footer(writer, fullName, periode, nom_formation, month);
+
+                        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                        FixText(LocalDateTime.now().format(fmt), "poppins.regular.ttf", "Poppins", 280, 100, writer, 13);
+
+                        String qrUrl = siteBaseUrl + "/student/getcertifcates";
+                        BarcodeQRCode qrCode = new BarcodeQRCode(qrUrl, 100, 100, null);
+                        Image qrImage = qrCode.getImage();
+                        qrImage.setAbsolutePosition(70, 60);
+                        document.add(qrImage);
+
+                        document.close();
+                        writer.close();
+                        fo.close();
+
+                        Certificat cert = new Certificat();
+                        cert.setDate(LocalDateTime.now());
+                        cert.setPeriode(periode);
+                        cert.setMonth(month);
+                        cert.setPath(relativePath);
+                        cert.setUser(user);
+                        cert.setUserOrGroupId(groupId);
+                        certificatRepository.save(cert);
+
+                        try {
+                            sendEmailWithAttachment(user.getUsername(), pdfname, fullName,
+                                    siteBaseUrl + "/student/getcertifcates");
+                        } catch (Exception emailEx) {
+                            System.err.println("Email failed for " + user.getUsername() + ": " + emailEx.getMessage());
+                        }
+
+                        generatedFor.add(fullName);
+                        successCount++;
+                    } catch (Exception e) {
+                        System.err.println("Error generating cert for " + fullName + ": " + e.getMessage());
+                    }
+                }
+
+                if (successCount > 0) {
+                    group.setCertificatesGenerated(true);
+                }
+            }
+
+            groupsRepository.save(group);
+
+            Map<String, Object> result = new java.util.HashMap<>();
+            result.put("groupClosed", true);
+            result.put("totalStudents", allStudents.size());
+            result.put("eligibleStudents", eligible.size());
+            result.put("certificatesGenerated", successCount);
+            result.put("ineligibleStudents", skippedCount);
+            result.put("generatedFor", generatedFor);
+            return ResponseEntity.ok(result);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error closing group: " + e.getMessage());
+        }
+    }
 
     private void sendEmailWithAttachment(String toEmail, String attachmentPath, String fullName, String certificateLink) throws MessagingException {
         MimeMessage message = javaMailSender.createMimeMessage();
@@ -934,6 +1062,116 @@ group.setCertificatesGenerated(false);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while updating certificats.");
         }
     }
+    @GetMapping("/all")
+    public ResponseEntity<List<Map<String, Object>>> getAllCertificates() {
+        List<Certificat> certs = certificatRepository.findAll();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Certificat c : certs) {
+            Map<String, Object> dto = new java.util.LinkedHashMap<>();
+            dto.put("id", c.getIdCertificat());
+            dto.put("period", c.getPeriode());
+            dto.put("month", c.getMonth());
+            dto.put("date", c.getDate() != null ? c.getDate().toString() : null);
+            dto.put("path", c.getPath());
+            // Extract formation from path: "Certifications/FormationName Month number/..."
+            String formation = "";
+            if (c.getPath() != null) {
+                String[] parts = c.getPath().split("/");
+                if (parts.length >= 2) {
+                    String folderName = parts[1];
+                    // Remove trailing " Month number" pattern
+                    formation = folderName.replaceAll("\\s+\\w+\\s+\\d+$", "").replaceAll("\\s+\\w+$", "").trim();
+                    if (formation.isEmpty()) formation = folderName;
+                }
+            }
+            dto.put("formation", formation);
+            if (c.getUser() != null) {
+                dto.put("studentId", c.getUser().getId());
+                dto.put("studentFirstName", c.getUser().getFirstName());
+                dto.put("studentLastName", c.getUser().getLastName());
+                dto.put("studentEmail", c.getUser().getUsername());
+            } else {
+                dto.put("studentId", null);
+                dto.put("studentFirstName", "Unknown");
+                dto.put("studentLastName", "");
+                dto.put("studentEmail", "");
+            }
+            result.add(dto);
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    @PutMapping("/update/{id}")
+    public ResponseEntity<?> updateAndRegenerateCertificate(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        try {
+            Certificat cert = certificatRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Certificate not found"));
+
+            String name = body.getOrDefault("name",
+                    cert.getUser() != null ? cert.getUser().getFirstName() + " " + cert.getUser().getLastName() : "Unknown");
+            String period = body.getOrDefault("period", cert.getPeriode());
+            String formation = body.getOrDefault("formation", "");
+            String month = body.getOrDefault("month", cert.getMonth());
+            String date = body.getOrDefault("date", cert.getDate() != null ? cert.getDate().toString() : "");
+
+            // Regenerate PDF in memory and return as download
+            Document document = new Document();
+            document.setPageSize(PageSize.A4.rotate());
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            PdfWriter writer = PdfWriter.getInstance(document, baos);
+            document.open();
+
+            PdfContentByte canvas = writer.getDirectContentUnder();
+            ClassPathResource bgResource = new ClassPathResource("certif2.jpg");
+            byte[] bgBytes = bgResource.getInputStream().readAllBytes();
+            Image image = Image.getInstance(bgBytes);
+            image.scaleAbsolute(PageSize.A4.rotate());
+            image.setAbsolutePosition(0, 0);
+            canvas.addImage(image);
+
+            float pos = (document.getPageSize().getWidth() / 2) - (name.length() * 18 / 2);
+            FixText(name, "savoyeplain.ttf", "Savoye", pos, 240, writer, 60);
+            certificate_footer(writer, name, period, formation, month);
+            FixText(date, "poppins.regular.ttf", "Poppins", 280, 100, writer, 13);
+
+            BarcodeQRCode qrCode = new BarcodeQRCode(siteBaseUrl + "/student/getcertifcates", 100, 100, null);
+            Image qrImage = qrCode.getImage();
+            qrImage.setAbsolutePosition(70, 60);
+            document.add(qrImage);
+            document.close();
+            writer.close();
+
+            // Update DB record
+            cert.setPeriode(period);
+            cert.setMonth(month);
+            certificatRepository.save(cert);
+
+            byte[] pdfBytes = baos.toByteArray();
+            return ResponseEntity.ok()
+                    .header("Content-Disposition", "attachment; filename=\"Certificate_" + name.replace(" ", "_") + ".pdf\"")
+                    .header("Content-Type", "application/pdf")
+                    .body(pdfBytes);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error regenerating certificate: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/group-status/{groupId}")
+    public ResponseEntity<Map<String, Object>> getGroupStatus(@PathVariable Long groupId) {
+        Groups group = groupsRepository.findById(groupId).orElse(null);
+        if (group == null) return ResponseEntity.notFound().build();
+        Map<String, Object> status = new java.util.HashMap<>();
+        status.put("sessionClosed", group.isSessionClosed());
+        status.put("closedDate", group.getClosedDate());
+        status.put("certificatesGenerated", group.isCertificatesGenerated());
+        return ResponseEntity.ok(status);
+    }
+
     @GetMapping("/check-generated/{groupId}")
     public ResponseEntity<Boolean> checkCertificatesGenerated(@PathVariable Long groupId) {
         boolean certificatesGenerated = certificateService.checkIfCertificatesGenerated(groupId);
