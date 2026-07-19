@@ -94,12 +94,11 @@ public class SessionController {
             UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
             User currentUser = userDetails.getUser();
             
-            // Get the Formateur object for this user
+            // Set formateur only if the current user is a formateur; admins can create sessions without one
             Formateur formateur = formateurRepository.findByUserId(currentUser.getId());
-            if (formateur == null) {
-                return ResponseEntity.badRequest().body(new MessageResponse("User is not a formateur!"));
+            if (formateur != null) {
+                session.setFormateur(formateur);
             }
-            session.setFormateur(formateur);
             
             List<Groups> groups = SessionService.getGroupsByIds(groupIds);
             session.setGroups(groups);
