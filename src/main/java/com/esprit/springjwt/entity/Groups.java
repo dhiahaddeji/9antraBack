@@ -56,6 +56,13 @@ public class Groups implements Serializable {
 	@Column(name = "certificates_generated")
 	private boolean certificatesGenerated;
 
+	@Column(name = "session_closed")
+	private boolean sessionClosed;
+
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "closed_date")
+	private Date closedDate;
+
 
 	@ManyToMany(mappedBy = "groups")
 
@@ -126,5 +133,10 @@ public class Groups implements Serializable {
 	public void setEtudiants(List<User> etudiants) {
 		this.etudiants = etudiants;
 	}
-    
+
+	public boolean isSessionClosed() { return sessionClosed; }
+	public void setSessionClosed(boolean sessionClosed) { this.sessionClosed = sessionClosed; }
+	public Date getClosedDate() { return closedDate; }
+	public void setClosedDate(Date closedDate) { this.closedDate = closedDate; }
+
 }
