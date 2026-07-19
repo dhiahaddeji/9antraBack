@@ -47,11 +47,17 @@ public class SessionService {
 	    session.setGroups(groups);
 
 	    for (Groups group : groups) {
-	        group.getSessions().add(session);
+	        if (group.getSessions() != null) {
+	            group.getSessions().add(session);
+	        }
 	    }
 
-
-        session.setGeneratedLink(this.generateRandomWord());
+	    // Use UUID-based link to avoid unique constraint collisions
+	    String link;
+	    do {
+	        link = generateRandomWord();
+	    } while (SessionRepository.findByGeneratedLink(link) != null);
+	    session.setGeneratedLink(link);
 
 	    return SessionRepository.save(session);
 	}
@@ -217,16 +223,7 @@ public class SessionService {
 
 
     public static String generateRandomWord() {
-        String characters = "abcdefghijklmnopqrstuvwxyz0123456789";
-        StringBuilder word = new StringBuilder();
-
-        Random random = new Random();
-        for (int i = 0; i < 5; i++) {
-            int randomIndex = random.nextInt(characters.length());
-            word.append(characters.charAt(randomIndex));
-        }
-
-        return word.toString();
+        return java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     }
 
 
