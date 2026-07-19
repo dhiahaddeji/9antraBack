@@ -102,19 +102,8 @@ public class SessionController {
             
             List<Groups> groups = SessionService.getGroupsByIds(groupIds);
             session.setGroups(groups);
-            
-            System.out.println("Creating session with:");
-            System.out.println("  - Name: " + session.getSessionName());
-            System.out.println("  - Formateur ID: " + formateur.getId());
-            System.out.println("  - Formateur User ID: " + currentUser.getId());
-            System.out.println("  - Groups: " + groups.stream().map(g -> g.getId()).toList());
-            
+
             Session savedSession = SessionService.addSession(session);
-            
-            System.out.println("Session saved with ID: " + savedSession.getId());
-            System.out.println("  - Formateur in saved session: " + (savedSession.getFormateur() != null ? savedSession.getFormateur().getId() : "null"));
-            System.out.println("  - Groups in saved session: " + savedSession.getGroups().stream().map(g -> g.getId()).toList());
-            
             return ResponseEntity.ok(savedSession);
         } catch (Exception e) {
             e.printStackTrace();
