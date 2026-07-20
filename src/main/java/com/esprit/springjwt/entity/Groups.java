@@ -56,8 +56,8 @@ public class Groups implements Serializable {
 	@Column(name = "certificates_generated")
 	private boolean certificatesGenerated;
 
-	@Column(name = "session_closed")
-	private boolean sessionClosed;
+	@Column(name = "session_closed", columnDefinition = "TINYINT(1) DEFAULT 0")
+	private Boolean sessionClosed = false;
 
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "closed_date")
@@ -134,7 +134,7 @@ public class Groups implements Serializable {
 		this.etudiants = etudiants;
 	}
 
-	public boolean isSessionClosed() { return sessionClosed; }
+	public boolean isSessionClosed() { return Boolean.TRUE.equals(sessionClosed); }
 	public void setSessionClosed(boolean sessionClosed) { this.sessionClosed = sessionClosed; }
 	public Date getClosedDate() { return closedDate; }
 	public void setClosedDate(Date closedDate) { this.closedDate = closedDate; }
