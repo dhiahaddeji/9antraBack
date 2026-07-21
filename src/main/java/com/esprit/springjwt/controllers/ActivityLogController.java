@@ -19,7 +19,7 @@ public class ActivityLogController {
 
     /** Paginated list with optional filters */
     @GetMapping
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('ADMINISTRATEUR')")
     public Page<ActivityLog> getLogs(
             @RequestParam(defaultValue = "0")  int    page,
             @RequestParam(defaultValue = "50") int    size,
@@ -32,14 +32,14 @@ public class ActivityLogController {
 
     /** Action-type counts for the stats bar */
     @GetMapping("/stats")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('ADMINISTRATEUR')")
     public Map<String, Long> stats() {
         return logService.stats();
     }
 
     /** Test: manually write one log entry to verify the table works */
     @PostMapping("/test")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    @PreAuthorize("hasAuthority('ADMINISTRATEUR')")
     public String test() {
         logService.log("ACTION", "Test", null, "Manual test log entry", "admin", "127.0.0.1", 200);
         return "Log entry written";
