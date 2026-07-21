@@ -23,18 +23,19 @@ public class ActivityLogService {
     @Autowired
     private ActivityLogRepository repo;
 
-    // ── Core write (async so it never slows down the request) ────────────
-    @Async
+    // ── Core write ───────────────────────────────────────────────────────
     public void log(String action, String entityType, Long entityId,
                     String description, String username, String ip, Integer status) {
         try {
             ActivityLog entry = new ActivityLog(action, entityType, entityId,
                     description, username, ip, status);
             repo.save(entry);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            System.err.println("[ActivityLog ERROR] " + e.getMessage());
+        }
     }
 
-    /** Convenience: resolves username + IP from current request context */
+    /** Convenience: resolves username + IP from current request context, runs async */
     @Async
     public void log(String action, String entityType, Long entityId, String description) {
         String username = resolveUsername();
