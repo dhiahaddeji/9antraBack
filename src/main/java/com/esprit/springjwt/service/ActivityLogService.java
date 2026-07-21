@@ -5,7 +5,6 @@ import com.esprit.springjwt.repository.ActivityLogRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -35,8 +34,7 @@ public class ActivityLogService {
         }
     }
 
-    /** Convenience: resolves username + IP from current request context, runs async */
-    @Async
+    /** Convenience: resolves username + IP from current request context */
     public void log(String action, String entityType, Long entityId, String description) {
         String username = resolveUsername();
         String ip       = resolveIp();
