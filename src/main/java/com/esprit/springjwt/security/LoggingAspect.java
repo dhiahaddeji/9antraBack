@@ -28,19 +28,13 @@ public class LoggingAspect {
         String method = jp.getSignature().getName().toLowerCase();
         if (isRead(method)) return;
 
-        String action     = resolveAction(method);
+        String action = resolveAction(method);
+        if (action.equals("ACTION")) return; // skip unclassified calls
+
         String entityType = resolveEntity(jp.getSignature().getDeclaringTypeName());
         String desc       = action + " " + entityType + " via " + jp.getSignature().getName() + "()";
 
         logService.log(action, entityType, null, desc);
-    }
-
-    // ── after exception ───────────────────────────────────────────────────
-    @AfterThrowing(pointcut = "allControllers()", throwing = "ex")
-    public void afterError(JoinPoint jp, Throwable ex) {
-        String entityType = resolveEntity(jp.getSignature().getDeclaringTypeName());
-        String desc = "ERROR in " + jp.getSignature().getName() + "(): " + ex.getMessage();
-        logService.log("ERROR", entityType, null, desc);
     }
 
     // ── helpers ───────────────────────────────────────────────────────────
