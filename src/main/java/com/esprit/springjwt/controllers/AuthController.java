@@ -46,6 +46,8 @@ import com.esprit.springjwt.payload.response.JwtResponse;
 import com.esprit.springjwt.payload.response.MessageResponse;
 import com.esprit.springjwt.repository.RoleRepository;
 import com.esprit.springjwt.repository.UserRepository;
+import com.esprit.springjwt.security.FileUploadValidator;
+import com.esprit.springjwt.security.LoginRateLimiter;
 import com.esprit.springjwt.security.jwt.JwtUtils;
 import com.esprit.springjwt.security.services.UserDetailsImpl;
 import org.springframework.web.multipart.MultipartFile;
@@ -88,6 +90,8 @@ public class AuthController {
     TokenProvider tokenProvider;
     @Autowired
     userService userService;
+    @Autowired
+    LoginRateLimiter loginRateLimiter;
 
     @Autowired
     Mail mail;
@@ -158,7 +162,12 @@ public class AuthController {
     }
 
     @PostMapping("/signin")
-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest,
+                                              javax.servlet.http.HttpServletRequest request) {
+        String ip = request.getRemoteAddr();
+        if (!loginRateLimiter.isAllowed(ip)) {
+            return ResponseEntity.status(429).body(new MessageResponse("Too many login attempts. Please wait 15 minutes."));
+        }
         // Check if the user exists by email
         User user = userRepository.findByEmail(loginRequest.getUsername());
         Optional<User> userOptional = userRepository.isfindByEmail(loginRequest.getUsername());
@@ -190,6 +199,7 @@ public class AuthController {
 
 
 
+            loginRateLimiter.reset(ip);
             return ResponseEntity.ok(new JwtResponse(jwt,
                     userDetails.getId(),
                     userDetails.getUsername(),
@@ -231,9 +241,13 @@ public class AuthController {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Username is already taken!"));
         }
 
+        try { FileUploadValidator.validatePdf(files); }
+        catch (IllegalArgumentException e) { return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage())); }
+
         // Create new user's account
         String currentDate = new SimpleDateFormat("yyyyMMddHHmm").format(new Date());
-        String filesName = currentDate + files.getOriginalFilename();
+        String originalName = files.getOriginalFilename() != null ? files.getOriginalFilename().replaceAll("[^a-zA-Z0-9._-]", "_") : "cv.pdf";
+        String filesName = currentDate + "_" + originalName;
         User user = new User();
         user.setUsername(username);
         user.setPassword(encoder.encode(password));
@@ -250,7 +264,7 @@ public class AuthController {
 
         byte[] bytes1 = files.getBytes();
         //Path path1 = Paths.get(UPLOAD_DOCUMENTS + filesName);
-        Path path1 = Paths.get(filesFolder + "Documents\\" + filesName);
+        Path path1 = Paths.get(filesFolder, "Documents", filesName);
         // Create directories if they don't exist
         Files.createDirectories(path1.getParent());
         Files.write(path1, bytes1);

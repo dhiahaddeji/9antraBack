@@ -104,14 +104,31 @@ public class WebSecurityConfig { // extends WebSecurityConfigurerAdapter {
     http.cors().and().csrf().disable()
         .exceptionHandling().authenticationEntryPoint(unauthorizedHandler).and()
         .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
-        .authorizeRequests().antMatchers("/api/auth/**","/api/forum/**","/swagger*/**","/api/user/**","/api/quiz/**","/api/Hackerspaces/**","/api/**",
-        "/swagger-ui/**","/api/resetpassword/**",
-        "/api-docs","/api/requestPath/**","/uploads/**").permitAll()
+        .authorizeRequests()
+        // ── Public: auth & account creation ──────────────────────────────
+        .antMatchers("/api/auth/**").permitAll()
+        .antMatchers("/api/resetpassword/**").permitAll()
+        .antMatchers("/api/requestPath/**").permitAll()
+        // ── Public: content visible before login ──────────────────────────
+        .antMatchers("/api/formation/**").permitAll()
+        .antMatchers("/api/categorie/**").permitAll()
+        .antMatchers("/api/Hackerspaces/**").permitAll()
+        .antMatchers("/api/forum/**").permitAll()
+        .antMatchers("/api/formateur/**").permitAll()
+        .antMatchers("/api/Offers/**").permitAll()
+        .antMatchers("/api/Projects/**").permitAll()
+        .antMatchers("/api/contact/**").permitAll()
+        .antMatchers("/api/quiz/**").permitAll()
+        .antMatchers("/api/Feedback/**").permitAll()
+        // ── WebSockets ───────────────────────────────────────────────────
         .antMatchers("/sba-websocket-chat/**").permitAll()
         .antMatchers("/sba-websocket-notification/**").permitAll()
         .antMatchers("/sba-websocket-forum/**").permitAll()
-        .antMatchers("/api/test/**").permitAll()
-            .antMatchers("api/payment/**").permitAll()
+        // ── Static uploads (profile photos shown publicly) ───────────────
+        .antMatchers("/uploads/**").permitAll()
+        // ── Swagger (dev only — restrict in prod if needed) ───────────────
+        .antMatchers("/swagger-ui/**", "/swagger*/**", "/api-docs/**", "/api-docs").permitAll()
+        // ── Everything else requires a valid JWT ─────────────────────────
         .anyRequest().authenticated() .and()
             .oauth2Login()
             .authorizationEndpoint()
