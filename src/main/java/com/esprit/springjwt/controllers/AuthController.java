@@ -92,6 +92,8 @@ public class AuthController {
     userService userService;
     @Autowired
     LoginRateLimiter loginRateLimiter;
+    @Autowired
+    com.esprit.springjwt.service.ActivityLogService activityLogService;
 
     @Autowired
     Mail mail;
@@ -200,12 +202,16 @@ public class AuthController {
 
 
             loginRateLimiter.reset(ip);
+            activityLogService.log("LOGIN", "User", userDetails.getId(),
+                    "Successful login: " + loginRequest.getUsername(), loginRequest.getUsername(), ip, 200);
             return ResponseEntity.ok(new JwtResponse(jwt,
                     userDetails.getId(),
                     userDetails.getUsername(),
                     roles));
 
         } catch (AuthenticationException e) {
+            activityLogService.log("LOGIN", "User", null,
+                    "Failed login attempt: " + loginRequest.getUsername(), loginRequest.getUsername(), ip, 400);
             return ResponseEntity
                     .badRequest()
                     .body(new MessageResponse("Incorrect password!"));

@@ -128,6 +128,8 @@ public class WebSecurityConfig { // extends WebSecurityConfigurerAdapter {
         .antMatchers("/uploads/**").permitAll()
         // ── Swagger (dev only — restrict in prod if needed) ───────────────
         .antMatchers("/swagger-ui/**", "/swagger*/**", "/api-docs/**", "/api-docs").permitAll()
+        // ── Admin-only: logs (JWT required + role checked by @PreAuthorize)
+        .antMatchers("/api/logs/**").authenticated()
         // ── Everything else requires a valid JWT ─────────────────────────
         .anyRequest().authenticated() .and()
             .oauth2Login()
