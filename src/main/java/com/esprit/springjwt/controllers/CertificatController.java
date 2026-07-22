@@ -149,8 +149,8 @@ public class CertificatController {
 
                     FixText(date,"poppins.regular.ttf", "Poppins",280,100, writer, 13);
 
-                    String str = "https://www.facebook.com/9antra.tn/";
-                    //Step-5: Create QR Code by using BarcodeQRCode Class
+                    certificat.setVerificationCode(java.util.UUID.randomUUID().toString());
+                    String str = siteBaseUrl + "/verify/" + certificat.getVerificationCode();
                     BarcodeQRCode my_code = new BarcodeQRCode(str, 100, 100, null);
                     //Step-6: Get Image corresponding to the input string
                     Image qr_image = my_code.getImage();
@@ -279,7 +279,7 @@ public class CertificatController {
                     String formattedDate = certificat.getDate().format(formatter);
                     FixText(formattedDate, "poppins.regular.ttf", "Poppins", 280, 100, writer, 13);
 
-                    String str = "http://localhost:4200/student/profile/" + user.getId(); // Utiliser l'ID de l'utilisateur pour le lien QR
+                    String str = siteBaseUrl + "/verify/" + certificat.getVerificationCode();
                     BarcodeQRCode my_code = new BarcodeQRCode(str, 100, 100, null);
                     Image qr_image = my_code.getImage();
                     qr_image.setAbsolutePosition(70, 60);
@@ -504,7 +504,8 @@ public class CertificatController {
                         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
                         FixText(LocalDateTime.now().format(fmt), "poppins.regular.ttf", "Poppins", 280, 100, writer, 13);
 
-                        String qrUrl = siteBaseUrl + "/student/getcertifcates";
+                        cert.setVerificationCode(java.util.UUID.randomUUID().toString());
+                        String qrUrl = siteBaseUrl + "/verify/" + cert.getVerificationCode();
                         BarcodeQRCode qrCode = new BarcodeQRCode(qrUrl, 100, 100, null);
                         Image qrImage = qrCode.getImage();
                         qrImage.setAbsolutePosition(70, 60);
@@ -946,7 +947,7 @@ group.setCertificatesGenerated(false);
                     String formattedDate = certificat.getDate().format(formatter);
                     FixText(formattedDate, "poppins.regular.ttf", "Poppins", 280, 100, writer, 13);
 
-                    String str = "http://localhost:4200/student/profile/" + user.getId(); // Utiliser l'ID de l'utilisateur pour le lien QR
+                    String str = siteBaseUrl + "/verify/" + certificat.getVerificationCode();
                     BarcodeQRCode my_code = new BarcodeQRCode(str, 100, 100, null);
                     Image qr_image = my_code.getImage();
                     qr_image.setAbsolutePosition(70, 60);
@@ -1136,7 +1137,8 @@ group.setCertificatesGenerated(false);
             certificate_footer(writer, name, period, formation, month);
             FixText(date, "poppins.regular.ttf", "Poppins", 280, 100, writer, 13);
 
-            BarcodeQRCode qrCode = new BarcodeQRCode(siteBaseUrl + "/student/getcertifcates", 100, 100, null);
+            String verifyCode = cert.getVerificationCode() != null ? cert.getVerificationCode() : java.util.UUID.randomUUID().toString();
+            BarcodeQRCode qrCode = new BarcodeQRCode(siteBaseUrl + "/verify/" + verifyCode, 100, 100, null);
             Image qrImage = qrCode.getImage();
             qrImage.setAbsolutePosition(70, 60);
             document.add(qrImage);
@@ -1296,6 +1298,28 @@ group.setCertificatesGenerated(false);
         if (pdfFile.exists() && pdfFile.isFile()) {
             pdfFile.delete();
         }
+    }
+
+    /** Public endpoint — no auth required — used by QR code scan */
+    @GetMapping("/verify/{code}")
+    public ResponseEntity<Map<String, Object>> verifyCertificate(@PathVariable String code) {
+        return certificatRepository.findByVerificationCode(code)
+            .map(c -> {
+                Map<String, Object> info = new java.util.LinkedHashMap<>();
+                info.put("valid", true);
+                info.put("studentName", c.getUser() != null
+                    ? c.getUser().getFirstName() + " " + c.getUser().getLastName() : "—");
+                info.put("formation", extractFormationNameFromPath(c.getPath() != null ? c.getPath() : ""));
+                info.put("period", c.getPeriode());
+                info.put("month", c.getMonth());
+                info.put("issuedAt", c.getDate() != null ? c.getDate().toString() : null);
+                return ResponseEntity.ok(info);
+            })
+            .orElseGet(() -> {
+                Map<String, Object> info = new java.util.LinkedHashMap<>();
+                info.put("valid", false);
+                return ResponseEntity.ok(info);
+            });
     }
 
 }

@@ -126,6 +126,9 @@ public class WebSecurityConfig { // extends WebSecurityConfigurerAdapter {
         .antMatchers("/sba-websocket-forum/**").permitAll()
         // ── Static uploads (profile photos shown publicly) ───────────────
         .antMatchers("/uploads/**").permitAll()
+        .antMatchers("/api/uploads/**").permitAll()
+        // ── Public: certificate verification (QR scan by anyone) ─────────
+        .antMatchers("/api/certif/verify/**").permitAll()
         // ── Swagger (dev only — restrict in prod if needed) ───────────────
         .antMatchers("/swagger-ui/**", "/swagger*/**", "/api-docs/**", "/api-docs").permitAll()
         // ── Admin-only: logs (JWT required + role checked by @PreAuthorize)

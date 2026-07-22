@@ -18,5 +18,5 @@ public interface CertificatRepository extends JpaRepository<Certificat, Long> {
 
    long countByUser_Groups_Id(Long groupId);
 
-
+   Optional<Certificat> findByVerificationCode(String verificationCode);
 }

@@ -10,6 +10,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -38,5 +39,8 @@ public class Certificat {
     }
     @Column(name = "user_or_group_id")
     private Long userOrGroupId;
+
+    @Column(unique = true, length = 36)
+    private String verificationCode = UUID.randomUUID().toString();
 
 }
