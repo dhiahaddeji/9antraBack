@@ -144,6 +144,10 @@ public class CertificatController {
                     float pos=(document.getPageSize().getWidth()/2)-(studentName.length()*18/2);
                     FixText(studentName,"savoyeplain.ttf", "Savoye", pos,240, writer, 60);
 
+                    // Formation name below student name
+                    float formationWidth = nom_formation.length() * 7.5f;
+                    float formationX = (document.getPageSize().getWidth() / 2) - (formationWidth / 2);
+                    FixText(nom_formation, "poppins.regular.ttf", "Poppins", formationX, 195, writer, 15);
 
                     certificate_footer(writer, studentName,periode,nom_formation,month);
 
@@ -499,6 +503,8 @@ public class CertificatController {
 
                         float pos = (document.getPageSize().getWidth() / 2) - (fullName.length() * 18 / 2);
                         FixText(fullName, "savoyeplain.ttf", "Savoye", pos, 240, writer, 60);
+                        float fmW = nom_formation.length() * 7.5f;
+                        FixText(nom_formation, "poppins.regular.ttf", "Poppins", (document.getPageSize().getWidth()/2)-(fmW/2), 195, writer, 15);
                         certificate_footer(writer, fullName, periode, nom_formation, month);
 
                         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
