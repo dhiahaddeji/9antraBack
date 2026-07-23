@@ -126,6 +126,17 @@ public class SessionController {
         SessionService.deleteSession(id);
     }
 
+    @PatchMapping("/{id}/meetLink")
+    public ResponseEntity<?> updateMeetLink(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String meetLink = body.get("meetLink");
+        if (meetLink == null || !meetLink.startsWith("https://meet.google.com/")) {
+            return ResponseEntity.badRequest().body("Invalid Google Meet URL");
+        }
+        return SessionService.getSessionById(id) != null
+            ? ResponseEntity.ok(SessionService.updateMeetLink(id, meetLink))
+            : ResponseEntity.notFound().build();
+    }
+
 
     @GetMapping("/{sessionId}/groups/{groupId}/users/{userId}/markPresence")
     public ResponseEntity<String> markUserPresence(

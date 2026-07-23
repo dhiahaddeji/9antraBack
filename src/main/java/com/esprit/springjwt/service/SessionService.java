@@ -72,6 +72,12 @@ public class SessionService {
         return SessionRepository.findById(id).get();
     }
 
+    public Session updateMeetLink(Long id, String meetLink) {
+        Session session = SessionRepository.findById(id).orElseThrow();
+        session.setMeetLink(meetLink);
+        return SessionRepository.save(session);
+    }
+
     public void deleteSession(Long sessionId) {
         Session session = SessionRepository.findById(sessionId).orElse(null);
         if (session != null) {

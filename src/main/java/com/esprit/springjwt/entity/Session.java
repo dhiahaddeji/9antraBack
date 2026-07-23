@@ -29,6 +29,8 @@ public class Session implements Serializable {
 
 	@Column(unique = true)
 	private String GeneratedLink;
+
+	private String meetLink;
 	@Temporal(TemporalType.TIMESTAMP)
     private Date finishDate;
     private String GroupSession;
