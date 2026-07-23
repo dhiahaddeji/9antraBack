@@ -26,6 +26,7 @@ import com.esprit.springjwt.entity.Groups;
 import com.esprit.springjwt.entity.Session;
 import com.esprit.springjwt.repository.GroupsRepository;
 import com.esprit.springjwt.service.SessionService;
+import com.esprit.springjwt.service.GoogleMeetService;
 
 @RestController
 @RequestMapping("/api/sessions")
@@ -37,6 +38,8 @@ public class SessionController {
     private GroupsRepository groupsRepository;
     @Autowired
     private FormateurRepository formateurRepository;
+    @Autowired
+    private GoogleMeetService googleMeetService;
 
 
 
@@ -74,6 +77,16 @@ public class SessionController {
             
             List<Groups> groups = SessionService.getGroupsByIds(groupIds);
             session.setGroups(groups);
+
+            // Auto-generate Google Meet link if not already provided
+            if (session.getMeetLink() == null || session.getMeetLink().isBlank()) {
+                String meetLink = googleMeetService.createMeetLink(
+                    session.getSessionName(),
+                    session.getStartDate(),
+                    session.getFinishDate()
+                );
+                if (meetLink != null) session.setMeetLink(meetLink);
+            }
 
             Session savedSession = SessionService.addSession(session);
             return ResponseEntity.ok(savedSession);
