@@ -141,20 +141,29 @@ public class CertificatController {
                     canvas.addImage(image);
 
 
+                    String verificationCode = java.util.UUID.randomUUID().toString();
+
                     float pos=(document.getPageSize().getWidth()/2)-(studentName.length()*18/2);
                     FixText(studentName,"savoyeplain.ttf", "Savoye", pos,240, writer, 60);
 
-                    // Formation name below student name
-                    float formationWidth = nom_formation.length() * 7.5f;
-                    float formationX = (document.getPageSize().getWidth() / 2) - (formationWidth / 2);
-                    FixText(nom_formation, "poppins.regular.ttf", "Poppins", formationX, 195, writer, 15);
+                    // Formation name — use built-in Helvetica to avoid font-loading failures
+                    PdfContentByte cbForm = writer.getDirectContent();
+                    cbForm.saveState();
+                    cbForm.beginText();
+                    BaseFont bfForm = BaseFont.createFont(BaseFont.HELVETICA_BOLD, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED);
+                    cbForm.setFontAndSize(bfForm, 16);
+                    cbForm.setColorFill(new BaseColor(175, 48, 101));
+                    float formationW = bfForm.getWidthPoint(nom_formation, 16);
+                    cbForm.moveText((document.getPageSize().getWidth() - formationW) / 2, 200);
+                    cbForm.showText(nom_formation);
+                    cbForm.endText();
+                    cbForm.restoreState();
 
                     certificate_footer(writer, studentName,periode,nom_formation,month);
 
                     FixText(date,"poppins.regular.ttf", "Poppins",280,100, writer, 13);
 
-                    certificat.setVerificationCode(java.util.UUID.randomUUID().toString());
-                    String str = siteBaseUrl + "/verify/" + certificat.getVerificationCode();
+                    String str = siteBaseUrl + "/verify/" + verificationCode;
                     BarcodeQRCode my_code = new BarcodeQRCode(str, 100, 100, null);
                     //Step-6: Get Image corresponding to the input string
                     Image qr_image = my_code.getImage();
@@ -168,6 +177,7 @@ public class CertificatController {
 
                     // SAVE TO DATABASE
                     Certificat certificat = new Certificat();
+                    certificat.setVerificationCode(verificationCode);
                     certificat.setDate(LocalDateTime.now());
                     certificat.setPeriode(periode);
                     certificat.setMonth(month);
