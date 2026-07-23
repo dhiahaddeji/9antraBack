@@ -511,17 +511,26 @@ public class CertificatController {
                         bgImage.setAbsolutePosition(0, 0);
                         canvas.addImage(bgImage);
 
+                        String certVerificationCode = java.util.UUID.randomUUID().toString();
+
                         float pos = (document.getPageSize().getWidth() / 2) - (fullName.length() * 18 / 2);
                         FixText(fullName, "savoyeplain.ttf", "Savoye", pos, 240, writer, 60);
-                        float fmW = nom_formation.length() * 7.5f;
-                        FixText(nom_formation, "poppins.regular.ttf", "Poppins", (document.getPageSize().getWidth()/2)-(fmW/2), 195, writer, 15);
+
+                        PdfContentByte cbFm = writer.getDirectContent();
+                        cbFm.saveState(); cbFm.beginText();
+                        BaseFont bfFm = BaseFont.createFont(BaseFont.HELVETICA_BOLD, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED);
+                        cbFm.setFontAndSize(bfFm, 16);
+                        cbFm.setColorFill(new BaseColor(175, 48, 101));
+                        float fmW = bfFm.getWidthPoint(nom_formation, 16);
+                        cbFm.moveText((document.getPageSize().getWidth() - fmW) / 2, 200);
+                        cbFm.showText(nom_formation); cbFm.endText(); cbFm.restoreState();
+
                         certificate_footer(writer, fullName, periode, nom_formation, month);
 
                         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
                         FixText(LocalDateTime.now().format(fmt), "poppins.regular.ttf", "Poppins", 280, 100, writer, 13);
 
-                        cert.setVerificationCode(java.util.UUID.randomUUID().toString());
-                        String qrUrl = siteBaseUrl + "/verify/" + cert.getVerificationCode();
+                        String qrUrl = siteBaseUrl + "/verify/" + certVerificationCode;
                         BarcodeQRCode qrCode = new BarcodeQRCode(qrUrl, 100, 100, null);
                         Image qrImage = qrCode.getImage();
                         qrImage.setAbsolutePosition(70, 60);
@@ -532,6 +541,7 @@ public class CertificatController {
                         fo.close();
 
                         Certificat cert = new Certificat();
+                        cert.setVerificationCode(certVerificationCode);
                         cert.setDate(LocalDateTime.now());
                         cert.setPeriode(periode);
                         cert.setMonth(month);
