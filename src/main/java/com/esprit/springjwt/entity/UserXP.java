@@ -18,6 +18,7 @@ public class UserXP {
     private int totalXp = 0;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "xp_rank")
     private XPRank rank = XPRank.BRONZE;
 
     private LocalDateTime lastUpdated = LocalDateTime.now();
