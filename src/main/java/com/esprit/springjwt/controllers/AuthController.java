@@ -384,6 +384,18 @@ public class AuthController {
         return ResponseEntity.ok(new MessageResponse("Coach created successfully!"));
     }
 
+    @PostMapping("/fix-missing-formateur/{userId}")
+    public ResponseEntity<?> fixMissingFormateur(@PathVariable Long userId) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) return ResponseEntity.badRequest().body(new MessageResponse("User not found"));
+        if (formateurRepository.findByUserId(userId) != null)
+            return ResponseEntity.ok(new MessageResponse("Formateur record already exists"));
+        Formateur formateur = new Formateur();
+        formateur.setUser(user);
+        formateurRepository.save(formateur);
+        return ResponseEntity.ok(new MessageResponse("Formateur record created for user " + userId));
+    }
+
     @PostMapping("/signupstudent/{idRequest}")
     public ResponseEntity<?> registerUserStudent(@PathVariable("idRequest") Long idRequest
     ) throws IOException {
