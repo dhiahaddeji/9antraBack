@@ -376,7 +376,11 @@ public class AuthController {
         if (!roleOpt.isPresent()) return ResponseEntity.badRequest().body(new MessageResponse("Role not found"));
         roles.add(roleOpt.get());
         user.setRoles(roles);
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        Formateur formateur = new Formateur();
+        formateur.setUser(savedUser);
+        formateur.setSkills(req.getTypeFormation());
+        formateurRepository.save(formateur);
         return ResponseEntity.ok(new MessageResponse("Coach created successfully!"));
     }
 
