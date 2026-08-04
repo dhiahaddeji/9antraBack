@@ -7,6 +7,7 @@ import com.esprit.springjwt.repository.GroupsRepository;
 import com.esprit.springjwt.repository.RecordRepository;
 import com.esprit.springjwt.repository.UserRepository;
 
+import com.esprit.springjwt.service.GoogleDriveService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,13 +26,15 @@ import java.util.Optional;
 @Service
 public class RecordService {
 	private static final Logger logger = LoggerFactory.getLogger(RecordService.class);
-	
+
 	@Autowired
     private RecordRepository recordRepository;
 	@Autowired
     private GroupsRepository groupsRepository;
 	@Autowired
 	UserRepository userRepository;
+	@Autowired
+	private GoogleDriveService googleDriveService;
     @Value("${files.folder}")
     String filesFolder;
 
@@ -72,78 +75,65 @@ public class RecordService {
 
         Optional<Groups> groupOptional = groupsRepository.findById(groupId);
         User user = userRepository.getById(idUser);
-        
-        if (groupOptional.isPresent()) {
-            Groups group = groupOptional.get();
 
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-            String dateFolderName = dateFormat.format(group.getCreationDate());
-
-            Path uploadDir = Paths.get(filesFolder, "Records", dateFolderName);
-            logger.info("Upload directory path: {}", uploadDir.toAbsolutePath());
-            
-            try {
-                Files.createDirectories(uploadDir);
-                logger.info("Directory created/exists: {}", uploadDir.toAbsolutePath());
-            } catch (IOException e) {
-                logger.error("ERROR: Failed to create directory: {}", e.getMessage(), e);
-                throw new IOException("Failed to create upload directory: " + e.getMessage());
-            }
-
-            Path recordPath = uploadDir.resolve(newFilename);
-            logger.info("Full file path: {}", recordPath.toAbsolutePath());
-            
-            try {
-                logger.info("Starting file transfer...");
-                long startTime = System.currentTimeMillis();
-                file.transferTo(recordPath);
-                long endTime = System.currentTimeMillis();
-                logger.info("File transfer took: {} ms", (endTime - startTime));
-                
-                // Verify file was saved with content
-                long savedFileSize = Files.size(recordPath);
-                logger.info("File transferred successfully. Saved file size: {} bytes", savedFileSize);
-                
-                if (savedFileSize == 0) {
-                    logger.error("ERROR: File was saved but is 0 bytes! Original size was: {}", file.getSize());
-                    throw new IOException("File transfer failed - saved file is empty");
-                }
-                
-                if (savedFileSize != file.getSize()) {
-                    logger.warn("WARNING: File size mismatch. Original: {}, Saved: {}", file.getSize(), savedFileSize);
-                }
-            } catch (IOException e) {
-                logger.error("ERROR: Failed to transfer file: {}", e.getMessage(), e);
-                throw new IOException("Failed to save file: " + e.getMessage());
-            }
-
-            Record record = new Record();
-            record.setTitle(title);
-            record.setUser(user);
-            record.setVideoLink(dateFolderName + "/" + newFilename);
-            record.setGroups(group);
-
-            Record savedRecord = recordRepository.save(record);
-            logger.info("Record saved to database with ID: {}", savedRecord.getId());
-            logger.info("Video link stored in DB: {}", dateFolderName + "/" + newFilename);
-            logger.info("=== RECORD UPLOAD COMPLETE ===");
-            
-            return savedRecord;
-        } else {
+        if (!groupOptional.isPresent()) {
             logger.error("ERROR: Group not found with ID: {}", groupId);
             throw new IllegalArgumentException("Group not found with ID: " + groupId);
         }
+
+        Groups group = groupOptional.get();
+        Record record = new Record();
+        record.setTitle(title);
+        record.setUser(user);
+        record.setGroups(group);
+
+        // Try Google Drive first; fall back to local filesystem
+        if (googleDriveService.isConfigured()) {
+            logger.info("Uploading to Google Drive...");
+            String mimeType = file.getContentType() != null ? file.getContentType() : "video/mp4";
+            GoogleDriveService.DriveUploadResult driveResult =
+                googleDriveService.uploadFile(newFilename, mimeType, file.getInputStream(), file.getSize());
+
+            if (driveResult != null) {
+                record.setVideoLink(driveResult.viewUrl);
+                record.setDriveFileId(driveResult.fileId);
+                logger.info("Uploaded to Drive: {}", driveResult.viewUrl);
+            } else {
+                logger.warn("Drive upload failed — falling back to local storage");
+                saveLocally(file, group, newFilename, record);
+            }
+        } else {
+            logger.info("Drive not configured — saving locally");
+            saveLocally(file, group, newFilename, record);
+        }
+
+        Record savedRecord = recordRepository.save(record);
+        logger.info("Record saved with ID: {} | link: {}", savedRecord.getId(), savedRecord.getVideoLink());
+        logger.info("=== RECORD UPLOAD COMPLETE ===");
+        return savedRecord;
     }
-    //get records by groups
+    private void saveLocally(MultipartFile file, Groups group, String newFilename, Record record) throws IOException {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+        String dateFolderName = dateFormat.format(group.getCreationDate());
+        Path uploadDir = Paths.get(filesFolder, "Records", dateFolderName);
+        Files.createDirectories(uploadDir);
+        Path recordPath = uploadDir.resolve(newFilename);
+        file.transferTo(recordPath);
+        record.setVideoLink(dateFolderName + "/" + newFilename);
+        logger.info("Saved locally: {}", recordPath.toAbsolutePath());
+    }
+
     public Iterable<Record> getRecordsByGroups(Long groupId) {
         return recordRepository.findByGroups(groupId);
     }
 
-
-
-//delete records by id
     public void deleteRecord(Long id) {
-        recordRepository.deleteById(id);
+        recordRepository.findById(id).ifPresent(record -> {
+            if (record.getDriveFileId() != null) {
+                googleDriveService.deleteFile(record.getDriveFileId());
+            }
+            recordRepository.deleteById(id);
+        });
     }
 
 }

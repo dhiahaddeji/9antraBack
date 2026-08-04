@@ -1,11 +1,13 @@
 package com.esprit.springjwt.controllers;
 
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import com.esprit.springjwt.entity.AdminProjects;
 import com.esprit.springjwt.entity.Formateur;
@@ -78,14 +80,33 @@ public class SessionController {
             List<Groups> groups = SessionService.getGroupsByIds(groupIds);
             session.setGroups(groups);
 
-            // Auto-generate Google Meet link if not already provided
-            if (session.getMeetLink() == null || session.getMeetLink().isBlank()) {
-                String meetLink = googleMeetService.createMeetLink(
-                    session.getSessionName(),
-                    session.getStartDate(),
-                    session.getFinishDate()
-                );
-                if (meetLink != null) session.setMeetLink(meetLink);
+            // Collect attendee emails: coach + all students across all groups
+            List<String> attendeeEmails = new ArrayList<>();
+            if (formateur != null && formateur.getUser() != null) {
+                attendeeEmails.add(formateur.getUser().getUsername());
+            }
+            for (Groups g : groups) {
+                if (g.getEtudiants() != null) {
+                    g.getEtudiants().stream()
+                        .filter(u -> u != null && u.getUsername() != null)
+                        .map(u -> u.getUsername())
+                        .forEach(attendeeEmails::add);
+                }
+            }
+
+            // Create Google Calendar event with Meet link and attendee invites
+            java.util.Map<String, String> calResult = googleMeetService.createSessionEvent(
+                session.getSessionName(),
+                session.getDescription(),
+                session.getStartDate(),
+                session.getFinishDate(),
+                attendeeEmails
+            );
+            if (calResult.containsKey("meetLink") && (session.getMeetLink() == null || session.getMeetLink().isBlank())) {
+                session.setMeetLink(calResult.get("meetLink"));
+            }
+            if (calResult.containsKey("calendarEventId")) {
+                session.setCalendarEventId(calResult.get("calendarEventId"));
             }
 
             Session savedSession = SessionService.addSession(session);
@@ -103,11 +124,24 @@ public class SessionController {
 
     @PutMapping("/updateSession")
     public Session updateSession(@RequestBody Session Session) {
+        if (Session.getCalendarEventId() != null) {
+            googleMeetService.updateCalendarEvent(
+                Session.getCalendarEventId(),
+                Session.getSessionName(),
+                Session.getDescription(),
+                Session.getStartDate(),
+                Session.getFinishDate()
+            );
+        }
         return SessionService.updateSession(Session);
     }
 
     @DeleteMapping("/deleteSession/{id}")
     public void deleteSession(@PathVariable("id") Long id) {
+        Session session = SessionService.getSessionById(id);
+        if (session != null && session.getCalendarEventId() != null) {
+            googleMeetService.deleteCalendarEvent(session.getCalendarEventId());
+        }
         SessionService.deleteSession(id);
     }
 

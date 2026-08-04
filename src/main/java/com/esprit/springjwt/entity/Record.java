@@ -21,6 +21,9 @@ public class Record implements Serializable {
 
     private String videoLink;
 
+    @Column(name = "drive_file_id")
+    private String driveFileId;
+
     @JsonIgnore
 
     @ManyToOne(fetch = FetchType.EAGER)

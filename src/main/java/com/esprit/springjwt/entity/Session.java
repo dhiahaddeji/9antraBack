@@ -57,6 +57,7 @@ public class Session implements Serializable {
 	@Column(name = "presence_status")
 	private Map<Long, Boolean> userPresence = new HashMap<>();
 
-
+	@Column(name = "calendar_event_id")
+	private String calendarEventId;
 
 }
