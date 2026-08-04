@@ -71,7 +71,7 @@ public class Groups implements Serializable {
 
 
 
-    @JsonIgnore
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"groups", "password", "roles", "courses", "enabled", "providerId", "about"})
     @ManyToMany(mappedBy = "groups")
     private List<User> etudiants = new ArrayList<>();
 
