@@ -6,7 +6,6 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
-import com.google.api.services.drive.model.FileList;
 import com.google.api.services.drive.model.Permission;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
@@ -18,15 +17,15 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
-import java.util.List;
 
 @Service
 public class GoogleDriveService {
 
-    private static final String FOLDER_NAME = "9antra Recordings";
-
     @Value("${google.service.account.json:}")
     private String serviceAccountJson;
+
+    @Value("${google.drive.folder.id:}")
+    private String configuredFolderId;
 
     private String recordingsFolderId;
 
@@ -52,36 +51,12 @@ public class GoogleDriveService {
             System.out.println("[GoogleDrive] Not configured — Drive upload disabled");
             return;
         }
-        try {
-            recordingsFolderId = getOrCreateFolder(FOLDER_NAME);
-            System.out.println("[GoogleDrive] Recordings folder ready: " + recordingsFolderId);
-        } catch (Exception e) {
-            System.err.println("[GoogleDrive] Failed to init folder: " + e.getMessage());
+        if (configuredFolderId != null && !configuredFolderId.isBlank()) {
+            recordingsFolderId = configuredFolderId;
+            System.out.println("[GoogleDrive] Using configured folder: " + recordingsFolderId);
+        } else {
+            System.err.println("[GoogleDrive] No folder ID configured (GOOGLE_DRIVE_FOLDER_ID)");
         }
-    }
-
-    private String getOrCreateFolder(String name) throws Exception {
-        Drive service = buildDriveService();
-
-        // Check if folder already exists
-        FileList result = service.files().list()
-            .setQ("name='" + name + "' and mimeType='application/vnd.google-apps.folder' and trashed=false")
-            .setSpaces("drive")
-            .setFields("files(id, name)")
-            .execute();
-
-        List<File> folders = result.getFiles();
-        if (folders != null && !folders.isEmpty()) {
-            return folders.get(0).getId();
-        }
-
-        // Create folder
-        File folderMeta = new File();
-        folderMeta.setName(name);
-        folderMeta.setMimeType("application/vnd.google-apps.folder");
-        File created = service.files().create(folderMeta).setFields("id").execute();
-        System.out.println("[GoogleDrive] Created folder '" + name + "': " + created.getId());
-        return created.getId();
     }
 
     /**
@@ -89,10 +64,7 @@ public class GoogleDriveService {
      * Returns the Google Drive view URL.
      */
     public DriveUploadResult uploadFile(String fileName, String mimeType, InputStream content, long size) {
-        if (!isConfigured()) return null;
-        if (recordingsFolderId == null) {
-            try { recordingsFolderId = getOrCreateFolder(FOLDER_NAME); } catch (Exception e) { return null; }
-        }
+        if (!isConfigured() || recordingsFolderId == null) return null;
 
         try {
             Drive service = buildDriveService();
