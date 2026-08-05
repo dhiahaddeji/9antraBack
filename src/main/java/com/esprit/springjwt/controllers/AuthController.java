@@ -488,7 +488,15 @@ public class AuthController {
         }
     }
 
-
+    @GetMapping("/test-email")
+    public ResponseEntity<?> testEmail(@RequestParam String to) {
+        try {
+            String result = emailService.sendSimpleMail(to, "Test Email from 9antra", "<h2>SMTP is working!</h2><p>If you see this, email delivery is configured correctly.</p>");
+            return ResponseEntity.ok(new MessageResponse("Result: " + result));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(new MessageResponse("SMTP Error: " + e.getMessage()));
+        }
+    }
 
 
 
