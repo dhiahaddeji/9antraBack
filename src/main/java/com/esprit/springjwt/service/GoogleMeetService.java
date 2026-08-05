@@ -23,8 +23,9 @@ public class GoogleMeetService {
     private String serviceAccountJson;
 
     private Calendar buildCalendarService() throws Exception {
+        String cleanJson = serviceAccountJson.replace("\\n", "\n");
         GoogleCredentials credentials = GoogleCredentials
-            .fromStream(new ByteArrayInputStream(serviceAccountJson.getBytes(StandardCharsets.UTF_8)))
+            .fromStream(new ByteArrayInputStream(cleanJson.getBytes(StandardCharsets.UTF_8)))
             .createScoped(Collections.singleton(CalendarScopes.CALENDAR));
 
         return new Calendar.Builder(
