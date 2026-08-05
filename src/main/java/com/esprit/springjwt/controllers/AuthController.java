@@ -496,19 +496,10 @@ public class AuthController {
 
     @GetMapping("/test-email")
     public ResponseEntity<?> testEmail(@RequestParam String to) {
-        try {
-            javax.mail.internet.MimeMessage message = javaMailSender.createMimeMessage();
-            org.springframework.mail.javamail.MimeMessageHelper helper =
-                new org.springframework.mail.javamail.MimeMessageHelper(message, false, "UTF-8");
-            helper.setFrom(mailUsername);
-            helper.setTo(to);
-            helper.setSubject("Test Email from 9antra");
-            helper.setText("<h2>SMTP is working!</h2>", true);
-            javaMailSender.send(message);
-            return ResponseEntity.ok(new MessageResponse("Mail sent successfully to " + to));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(new MessageResponse("SMTP Error: " + e.getClass().getSimpleName() + " - " + e.getMessage() + (e.getCause() != null ? " | Cause: " + e.getCause().getMessage() : "")));
-        }
+        String result = emailService.sendSimpleMail(to, "Test Email from 9antra", "<h2>9antra email working!</h2><p>If you see this, Resend is configured correctly.</p>");
+        boolean ok = result.startsWith("Mail Sent");
+        return ok ? ResponseEntity.ok(new MessageResponse(result))
+                  : ResponseEntity.status(500).body(new MessageResponse(result));
     }
 
 

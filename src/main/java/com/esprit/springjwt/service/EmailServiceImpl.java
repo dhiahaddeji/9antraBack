@@ -19,7 +19,11 @@ import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import javax.mail.util.ByteArrayDataSource;
 import java.io.File;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -31,51 +35,102 @@ public class EmailServiceImpl implements EmailService{
     @Autowired
      JavaMailSender javaMailSender;
 
-    @Value("${spring.mail.username}") private String sender;
+    @Value("${spring.mail.username:}") private String sender;
+    @Value("${resend.api.key:}") private String resendApiKey;
 
-    // Method 1
-    // To send a simple email
-    public String sendSimpleMail(String to, String subject, String text)
-    {
+    private String resendFrom() {
+        return "9antra Platform <onboarding@resend.dev>";
+    }
 
-        // Try block to check for exceptions
-        try {
-
-            // Creating a simple mail message
-            SimpleMailMessage mailMessage
-                    = new SimpleMailMessage();
-            // Creating a MimeMessage
-            MimeMessage message = javaMailSender.createMimeMessage();
-
-            // Creating a helper for the MimeMessage
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            // Setting up necessary details
-           /* mailMessage.setFrom(sender);
-            mailMessage.setTo(to);
-            mailMessage.setText(text);
-            mailMessage.setSubject(subject);*/
-            // Setting up necessary details
-            helper.setFrom(sender);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(text, true);  // Set to true for HTML content
-
-            // Sending the mail
-            javaMailSender.send(message);
-            return "Mail Sent Successfully...";
-
-            // Sending the mail
-          /*  javaMailSender.send(mailMessage);
-            return "Mail Sent Successfully...";*/
+    private void sendViaResend(String to, String subject, String htmlBody) throws Exception {
+        if (resendApiKey == null || resendApiKey.isBlank()) throw new IllegalStateException("RESEND_API_KEY not configured");
+        String escapedSubject = subject.replace("\"", "\\\"");
+        String escapedBody = htmlBody.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
+        String json = "{\"from\":\"" + resendFrom() + "\",\"to\":[\"" + to + "\"],\"subject\":\"" + escapedSubject + "\",\"html\":\"" + escapedBody + "\"}";
+        URL url = new URL("https://api.resend.com/emails");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Authorization", "Bearer " + resendApiKey);
+        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setDoOutput(true);
+        conn.setConnectTimeout(10000);
+        conn.setReadTimeout(10000);
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(json.getBytes(StandardCharsets.UTF_8));
         }
-
-        // Catch block to handle the exceptions
-        catch (Exception e) {
-            return "Error while Sending Mail";
+        int code = conn.getResponseCode();
+        if (code >= 300) {
+            String err = new String(conn.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+            throw new RuntimeException("Resend API error " + code + ": " + err);
         }
     }
 
-    public void sendCalendarInvite(String sessionName, String description,
+    // Method 1
+    public String sendSimpleMail(String to, String subject, String text) {
+        try {
+            sendViaResend(to, subject, text);
+            return "Mail Sent Successfully...";
+        } catch (Exception e) {
+            System.err.println("[Email] sendSimpleMail failed: " + e.getMessage());
+            return "Error while Sending Mail: " + e.getMessage();
+        }
+    }
+
+    public void sendCalendarInvite(String sessionName, String desc,
+                                   Date startDate, Date endDate,
+                                   String meetLink, List<String> attendeeEmails) {
+        if (attendeeEmails == null || attendeeEmails.isEmpty()) return;
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        SimpleDateFormat readable = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm 'UTC'");
+        readable.setTimeZone(TimeZone.getTimeZone("UTC"));
+        String start = sdf.format(startDate);
+        String end = sdf.format(endDate);
+        String uid = UUID.randomUUID().toString();
+        String ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//9antra//Platform//EN\r\nMETHOD:REQUEST\r\n" +
+            "BEGIN:VEVENT\r\nUID:" + uid + "\r\nDTSTART:" + start + "\r\nDTEND:" + end + "\r\n" +
+            "SUMMARY:" + sessionName + "\r\n" +
+            "DESCRIPTION:" + (desc != null ? desc : "") + (meetLink != null ? "\\nMeet: " + meetLink : "") + "\r\n" +
+            "LOCATION:" + (meetLink != null ? meetLink : "") + "\r\n" +
+            "END:VEVENT\r\nEND:VCALENDAR\r\n";
+        String icsBase64 = java.util.Base64.getEncoder().encodeToString(ics.getBytes(StandardCharsets.UTF_8));
+        String html = "<html><body>" +
+            "<h2>📅 Session Invitation: " + sessionName + "</h2>" +
+            "<p><b>Date:</b> " + readable.format(startDate) + " – " + readable.format(endDate) + "</p>" +
+            (desc != null && !desc.isBlank() ? "<p><b>Description:</b> " + desc + "</p>" : "") +
+            (meetLink != null ? "<p><b>Google Meet:</b> <a href='" + meetLink + "'>" + meetLink + "</a></p>" : "") +
+            "<p style='color:#888'>Open the attached <b>invite.ics</b> to add this to your calendar.</p>" +
+            "</body></html>";
+        for (String email : attendeeEmails) {
+            try {
+                if (resendApiKey == null || resendApiKey.isBlank()) throw new IllegalStateException("RESEND_API_KEY not configured");
+                String escapedSubject = ("📅 Session Invitation: " + sessionName).replace("\"", "\\\"");
+                String escapedHtml = html.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
+                String json = "{\"from\":\"" + resendFrom() + "\",\"to\":[\"" + email + "\"],\"subject\":\"" + escapedSubject + "\",\"html\":\"" + escapedHtml + "\"," +
+                    "\"attachments\":[{\"filename\":\"invite.ics\",\"content\":\"" + icsBase64 + "\"}]}";
+                URL url = new URL("https://api.resend.com/emails");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Authorization", "Bearer " + resendApiKey);
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(10000);
+                try (OutputStream os = conn.getOutputStream()) { os.write(json.getBytes(StandardCharsets.UTF_8)); }
+                int code = conn.getResponseCode();
+                if (code >= 300) {
+                    String err = new String(conn.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+                    System.err.println("[Email] Resend error " + code + " for " + email + ": " + err);
+                } else {
+                    System.out.println("[Email] Calendar invite sent to: " + email);
+                }
+            } catch (Exception e) {
+                System.err.println("[Email] Failed to send invite to " + email + ": " + e.getMessage());
+            }
+        }
+    }
+
+    public void sendCalendarInvite_OLD(String sessionName, String description,
                                    Date startDate, Date endDate,
                                    String meetLink, List<String> attendeeEmails) {
         if (attendeeEmails == null || attendeeEmails.isEmpty()) return;
