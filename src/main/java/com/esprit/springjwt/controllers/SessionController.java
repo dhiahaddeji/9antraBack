@@ -29,6 +29,7 @@ import com.esprit.springjwt.entity.Session;
 import com.esprit.springjwt.repository.GroupsRepository;
 import com.esprit.springjwt.service.SessionService;
 import com.esprit.springjwt.service.GoogleMeetService;
+import com.esprit.springjwt.service.EmailService;
 
 @RestController
 @RequestMapping("/api/sessions")
@@ -42,6 +43,8 @@ public class SessionController {
     private FormateurRepository formateurRepository;
     @Autowired
     private GoogleMeetService googleMeetService;
+    @Autowired
+    private EmailService emailService;
 
 
 
@@ -110,6 +113,17 @@ public class SessionController {
             }
 
             Session savedSession = SessionService.addSession(session);
+
+            // Send ICS calendar invite email to all attendees
+            emailService.sendCalendarInvite(
+                session.getSessionName(),
+                session.getDescription(),
+                session.getStartDate(),
+                session.getFinishDate(),
+                calResult.get("meetLink"),
+                attendeeEmails
+            );
+
             return ResponseEntity.ok(savedSession);
         } catch (Exception e) {
             e.printStackTrace();

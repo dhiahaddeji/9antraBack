@@ -6,6 +6,9 @@ import com.esprit.springjwt.entity.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
+import java.util.List;
+
 
 @Service
 public interface EmailService {
@@ -17,6 +20,10 @@ public interface EmailService {
     // Method
     // To send an email with attachment
     String sendMailWithAttachment(EmailDetails details);
+
+    void sendCalendarInvite(String sessionName, String description,
+                            Date startDate, Date endDate,
+                            String meetLink, List<String> attendeeEmails);
     
 
 }
