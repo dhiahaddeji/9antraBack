@@ -35,40 +35,41 @@ public class EmailServiceImpl implements EmailService{
     @Autowired
      JavaMailSender javaMailSender;
 
-    @Value("${spring.mail.username:}") private String sender;
+    @Value("${spring.mail.username:haddajidhia123@gmail.com}") private String sender;
     @Value("${resend.api.key:}") private String resendApiKey;
+    @Value("${brevo.api.key:}") private String brevoApiKey;
 
-    private String resendFrom() {
-        return "9antra Platform <onboarding@resend.dev>";
-    }
-
-    private void sendViaResend(String to, String subject, String htmlBody) throws Exception {
-        if (resendApiKey == null || resendApiKey.isBlank()) throw new IllegalStateException("RESEND_API_KEY not configured");
-        String escapedSubject = subject.replace("\"", "\\\"");
-        String escapedBody = htmlBody.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
-        String json = "{\"from\":\"" + resendFrom() + "\",\"to\":[\"" + to + "\"],\"subject\":\"" + escapedSubject + "\",\"html\":\"" + escapedBody + "\"}";
-        URL url = new URL("https://api.resend.com/emails");
+    private void sendViaBrevo(String to, String subject, String htmlBody, String icsBase64) throws Exception {
+        if (brevoApiKey == null || brevoApiKey.isBlank()) throw new IllegalStateException("BREVO_API_KEY not configured");
+        String senderJson = "{\"name\":\"9antra Platform\",\"email\":\"" + sender + "\"}";
+        String toJson = "[{\"email\":\"" + to + "\"}]";
+        String subjectEsc = subject.replace("\"", "\\\"");
+        String bodyEsc = htmlBody.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
+        String attachmentJson = icsBase64 != null
+            ? ",\"attachment\":[{\"name\":\"invite.ics\",\"content\":\"" + icsBase64 + "\"}]"
+            : "";
+        String json = "{\"sender\":" + senderJson + ",\"to\":" + toJson +
+            ",\"subject\":\"" + subjectEsc + "\",\"htmlContent\":\"" + bodyEsc + "\"" + attachmentJson + "}";
+        URL url = new URL("https://api.brevo.com/v3/smtp/email");
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
-        conn.setRequestProperty("Authorization", "Bearer " + resendApiKey);
+        conn.setRequestProperty("api-key", brevoApiKey);
         conn.setRequestProperty("Content-Type", "application/json");
         conn.setDoOutput(true);
         conn.setConnectTimeout(10000);
         conn.setReadTimeout(10000);
-        try (OutputStream os = conn.getOutputStream()) {
-            os.write(json.getBytes(StandardCharsets.UTF_8));
-        }
+        try (OutputStream os = conn.getOutputStream()) { os.write(json.getBytes(StandardCharsets.UTF_8)); }
         int code = conn.getResponseCode();
         if (code >= 300) {
             String err = new String(conn.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
-            throw new RuntimeException("Resend API error " + code + ": " + err);
+            throw new RuntimeException("Brevo API error " + code + ": " + err);
         }
     }
 
     // Method 1
     public String sendSimpleMail(String to, String subject, String text) {
         try {
-            sendViaResend(to, subject, text);
+            sendViaBrevo(to, subject, text, null);
             return "Mail Sent Successfully...";
         } catch (Exception e) {
             System.err.println("[Email] sendSimpleMail failed: " + e.getMessage());
@@ -103,27 +104,8 @@ public class EmailServiceImpl implements EmailService{
             "</body></html>";
         for (String email : attendeeEmails) {
             try {
-                if (resendApiKey == null || resendApiKey.isBlank()) throw new IllegalStateException("RESEND_API_KEY not configured");
-                String escapedSubject = ("📅 Session Invitation: " + sessionName).replace("\"", "\\\"");
-                String escapedHtml = html.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
-                String json = "{\"from\":\"" + resendFrom() + "\",\"to\":[\"" + email + "\"],\"subject\":\"" + escapedSubject + "\",\"html\":\"" + escapedHtml + "\"," +
-                    "\"attachments\":[{\"filename\":\"invite.ics\",\"content\":\"" + icsBase64 + "\"}]}";
-                URL url = new URL("https://api.resend.com/emails");
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Authorization", "Bearer " + resendApiKey);
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setDoOutput(true);
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
-                try (OutputStream os = conn.getOutputStream()) { os.write(json.getBytes(StandardCharsets.UTF_8)); }
-                int code = conn.getResponseCode();
-                if (code >= 300) {
-                    String err = new String(conn.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
-                    System.err.println("[Email] Resend error " + code + " for " + email + ": " + err);
-                } else {
-                    System.out.println("[Email] Calendar invite sent to: " + email);
-                }
+                sendViaBrevo(email, "📅 Session Invitation: " + sessionName, html, icsBase64);
+                System.out.println("[Email] Calendar invite sent to: " + email);
             } catch (Exception e) {
                 System.err.println("[Email] Failed to send invite to " + email + ": " + e.getMessage());
             }
