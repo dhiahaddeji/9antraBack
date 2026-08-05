@@ -38,22 +38,26 @@ public class EmailServiceImpl implements EmailService{
     @Value("${spring.mail.username:haddajidhia123@gmail.com}") private String sender;
     @Value("${resend.api.key:}") private String resendApiKey;
     @Value("${brevo.api.key:}") private String brevoApiKey;
+    @Value("${mailjet.api.key:}") private String mailjetApiKey;
+    @Value("${mailjet.secret.key:}") private String mailjetSecretKey;
 
-    private void sendViaBrevo(String to, String subject, String htmlBody, String icsBase64) throws Exception {
-        if (brevoApiKey == null || brevoApiKey.isBlank()) throw new IllegalStateException("BREVO_API_KEY not configured");
-        String senderJson = "{\"name\":\"9antra Platform\",\"email\":\"" + sender + "\"}";
-        String toJson = "[{\"email\":\"" + to + "\"}]";
+    private void sendViaMailjet(String to, String subject, String htmlBody, String icsBase64) throws Exception {
+        if (mailjetApiKey == null || mailjetApiKey.isBlank()) throw new IllegalStateException("MAILJET_API_KEY not configured");
+        String auth = java.util.Base64.getEncoder().encodeToString((mailjetApiKey + ":" + mailjetSecretKey).getBytes(StandardCharsets.UTF_8));
         String subjectEsc = subject.replace("\"", "\\\"");
         String bodyEsc = htmlBody.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
-        String attachmentJson = icsBase64 != null
-            ? ",\"attachment\":[{\"name\":\"invite.ics\",\"content\":\"" + icsBase64 + "\"}]"
+        String attachPart = icsBase64 != null
+            ? ",\"Attachments\":[{\"ContentType\":\"text/calendar\",\"Filename\":\"invite.ics\",\"Base64Content\":\"" + icsBase64 + "\"}]"
             : "";
-        String json = "{\"sender\":" + senderJson + ",\"to\":" + toJson +
-            ",\"subject\":\"" + subjectEsc + "\",\"htmlContent\":\"" + bodyEsc + "\"" + attachmentJson + "}";
-        URL url = new URL("https://api.brevo.com/v3/smtp/email");
+        String json = "{\"Messages\":[{" +
+            "\"From\":{\"Email\":\"" + sender + "\",\"Name\":\"9antra Platform\"}," +
+            "\"To\":[{\"Email\":\"" + to + "\"}]," +
+            "\"Subject\":\"" + subjectEsc + "\"," +
+            "\"HTMLPart\":\"" + bodyEsc + "\"" + attachPart + "}]}";
+        URL url = new URL("https://api.mailjet.com/v3.1/send");
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
-        conn.setRequestProperty("api-key", brevoApiKey);
+        conn.setRequestProperty("Authorization", "Basic " + auth);
         conn.setRequestProperty("Content-Type", "application/json");
         conn.setDoOutput(true);
         conn.setConnectTimeout(10000);
@@ -62,14 +66,14 @@ public class EmailServiceImpl implements EmailService{
         int code = conn.getResponseCode();
         if (code >= 300) {
             String err = new String(conn.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
-            throw new RuntimeException("Brevo API error " + code + ": " + err);
+            throw new RuntimeException("Mailjet API error " + code + ": " + err);
         }
     }
 
     // Method 1
     public String sendSimpleMail(String to, String subject, String text) {
         try {
-            sendViaBrevo(to, subject, text, null);
+            sendViaMailjet(to, subject, text, null);
             return "Mail Sent Successfully...";
         } catch (Exception e) {
             System.err.println("[Email] sendSimpleMail failed: " + e.getMessage());
@@ -104,7 +108,7 @@ public class EmailServiceImpl implements EmailService{
             "</body></html>";
         for (String email : attendeeEmails) {
             try {
-                sendViaBrevo(email, "📅 Session Invitation: " + sessionName, html, icsBase64);
+                sendViaMailjet(email, "Session Invitation: " + sessionName, html, icsBase64);
                 System.out.println("[Email] Calendar invite sent to: " + email);
             } catch (Exception e) {
                 System.err.println("[Email] Failed to send invite to " + email + ": " + e.getMessage());
