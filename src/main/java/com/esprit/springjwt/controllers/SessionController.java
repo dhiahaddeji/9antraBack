@@ -114,13 +114,16 @@ public class SessionController {
 
             Session savedSession = SessionService.addSession(session);
 
+            // Use Google-generated link if available, otherwise fall back to manually entered link
+            String finalMeetLink = calResult.containsKey("meetLink") ? calResult.get("meetLink") : session.getMeetLink();
+
             // Send ICS calendar invite email to all attendees
             emailService.sendCalendarInvite(
                 session.getSessionName(),
                 session.getDescription(),
                 session.getStartDate(),
                 session.getFinishDate(),
-                calResult.get("meetLink"),
+                finalMeetLink,
                 attendeeEmails
             );
 
