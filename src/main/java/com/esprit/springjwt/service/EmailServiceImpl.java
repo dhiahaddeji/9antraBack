@@ -99,13 +99,25 @@ public class EmailServiceImpl implements EmailService{
             "LOCATION:" + (meetLink != null ? meetLink : "") + "\r\n" +
             "END:VEVENT\r\nEND:VCALENDAR\r\n";
         String icsBase64 = java.util.Base64.getEncoder().encodeToString(ics.getBytes(StandardCharsets.UTF_8));
-        String html = "<html><body>" +
-            "<h2>📅 Session Invitation: " + sessionName + "</h2>" +
-            "<p><b>Date:</b> " + readable.format(startDate) + " – " + readable.format(endDate) + "</p>" +
-            (desc != null && !desc.isBlank() ? "<p><b>Description:</b> " + desc + "</p>" : "") +
-            (meetLink != null ? "<p><b>Google Meet:</b> <a href='" + meetLink + "'>" + meetLink + "</a></p>" : "") +
-            "<p style='color:#888'>Open the attached <b>invite.ics</b> to add this to your calendar.</p>" +
-            "</body></html>";
+        String meetButton = meetLink != null
+            ? "<div style='margin:24px 0;'><a href='" + meetLink + "' style='background:#af3065;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:16px;font-weight:bold;display:inline-block;'>📹 Join Google Meet</a></div>"
+            : "";
+        String html = "<html><body style='font-family:Arial,sans-serif;background:#f5f7f9;padding:20px;'>" +
+            "<div style='max-width:560px;margin:auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);'>" +
+            "<div style='background:linear-gradient(135deg,#af3065,#e071a9);padding:28px 32px;'>" +
+            "<h2 style='color:#fff;margin:0;font-size:22px;'>📅 Session Invitation</h2>" +
+            "<p style='color:rgba(255,255,255,.85);margin:6px 0 0;font-size:16px;'>" + sessionName + "</p>" +
+            "</div>" +
+            "<div style='padding:28px 32px;'>" +
+            "<table style='width:100%;border-collapse:collapse;'>" +
+            "<tr><td style='padding:8px 0;color:#888;width:110px;'>📆 Date</td><td style='padding:8px 0;font-weight:bold;'>" + readable.format(startDate) + "</td></tr>" +
+            "<tr><td style='padding:8px 0;color:#888;'>⏰ Time</td><td style='padding:8px 0;font-weight:bold;'>" + readable.format(startDate) + " – " + readable.format(endDate) + "</td></tr>" +
+            (desc != null && !desc.isBlank() ? "<tr><td style='padding:8px 0;color:#888;'>📝 Description</td><td style='padding:8px 0;'>" + desc + "</td></tr>" : "") +
+            "</table>" +
+            meetButton +
+            "<hr style='border:none;border-top:1px solid #eee;margin:20px 0;'/>" +
+            "<p style='color:#aaa;font-size:13px;'>Open the attached <b>invite.ics</b> to add this session to your calendar.</p>" +
+            "</div></div></body></html>";
         for (String email : attendeeEmails) {
             try {
                 sendViaMailjet(email, "Session Invitation: " + sessionName, html, icsBase64);
