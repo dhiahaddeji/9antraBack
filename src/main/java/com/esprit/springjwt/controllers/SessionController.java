@@ -11,17 +11,14 @@ import java.util.stream.Collectors;
 
 import com.esprit.springjwt.entity.AdminProjects;
 import com.esprit.springjwt.entity.Formateur;
-import com.esprit.springjwt.entity.User;
 import com.esprit.springjwt.exception.ResourceNotFoundException;
 import com.esprit.springjwt.payload.response.MessageResponse;
 import com.esprit.springjwt.repository.FormateurRepository;
-import com.esprit.springjwt.security.services.UserDetailsImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.esprit.springjwt.entity.Groups;
@@ -63,25 +60,20 @@ public class SessionController {
     }
 
     @PostMapping("/addSession")
+    @PreAuthorize("hasAuthority('ADMINISTRATEUR')")
     public ResponseEntity<?> addSession(@RequestBody Session session, @RequestParam("groupIds") List<Long> groupIds) {
         try {
-            // Get current authenticated user (coach/formateur)
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (!(authentication.getPrincipal() instanceof UserDetailsImpl)) {
-                return ResponseEntity.badRequest().body(new MessageResponse("Not authenticated!"));
+            List<Groups> groups = SessionService.getGroupsByIds(groupIds);
+            session.setGroups(groups);
+
+            // Sessions are admin-created now; derive the coach from the assigned group's formateur
+            Formateur formateur = null;
+            if (!groups.isEmpty() && groups.get(0).getFormateur() != null) {
+                formateur = formateurRepository.findByUserId(groups.get(0).getFormateur().getId());
             }
-            
-            UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-            User currentUser = userDetails.getUser();
-            
-            // Set formateur only if the current user is a formateur; admins can create sessions without one
-            Formateur formateur = formateurRepository.findByUserId(currentUser.getId());
             if (formateur != null) {
                 session.setFormateur(formateur);
             }
-            
-            List<Groups> groups = SessionService.getGroupsByIds(groupIds);
-            session.setGroups(groups);
 
             // Collect attendee emails: coach + all students across all groups
             List<String> attendeeEmails = new ArrayList<>();
