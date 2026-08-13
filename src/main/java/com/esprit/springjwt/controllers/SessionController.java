@@ -19,11 +19,13 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import com.esprit.springjwt.entity.Groups;
 import com.esprit.springjwt.entity.Session;
 import com.esprit.springjwt.repository.GroupsRepository;
+import com.esprit.springjwt.security.services.UserDetailsImpl;
 import com.esprit.springjwt.service.SessionService;
 import com.esprit.springjwt.service.GoogleMeetService;
 import com.esprit.springjwt.service.EmailService;
@@ -75,8 +77,12 @@ public class SessionController {
                 session.setFormateur(formateur);
             }
 
-            // Collect attendee emails: coach + all students across all groups
+            // Collect attendee emails: admin creator + coach + all students across all groups
             List<String> attendeeEmails = new ArrayList<>();
+            Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            if (principal instanceof UserDetailsImpl) {
+                attendeeEmails.add(((UserDetailsImpl) principal).getUsername());
+            }
             if (formateur != null && formateur.getUser() != null) {
                 attendeeEmails.add(formateur.getUser().getUsername());
             }

@@ -22,6 +22,9 @@ public class GoogleMeetService {
     @Value("${google.service.account.json:}")
     private String serviceAccountJson;
 
+    @Value("${google.calendar.id:primary}")
+    private String calendarId;
+
     private Calendar buildCalendarService() throws Exception {
         String cleanJson = serviceAccountJson.replace("\\n", "\n");
         GoogleCredentials credentials = GoogleCredentials
@@ -76,7 +79,7 @@ public class GoogleMeetService {
             }
 
             Event created = service.events()
-                .insert("primary", event)
+                .insert(calendarId, event)
                 .setConferenceDataVersion(1)
                 .setSendUpdates("all") // sends invites to attendees
                 .execute();
@@ -108,12 +111,12 @@ public class GoogleMeetService {
         if (serviceAccountJson == null || serviceAccountJson.isBlank() || eventId == null) return;
         try {
             Calendar service = buildCalendarService();
-            Event event = service.events().get("primary", eventId).execute();
+            Event event = service.events().get(calendarId, eventId).execute();
             event.setSummary(sessionName);
             if (description != null) event.setDescription(description);
             event.setStart(new EventDateTime().setDateTime(new DateTime(startDate)));
             event.setEnd(new EventDateTime().setDateTime(new DateTime(endDate)));
-            service.events().update("primary", eventId, event).setSendUpdates("all").execute();
+            service.events().update(calendarId, eventId, event).setSendUpdates("all").execute();
             System.out.println("[GoogleMeet] Event updated: " + eventId);
         } catch (Exception e) {
             System.err.println("[GoogleMeet] Failed to update event " + eventId + ": " + e.getMessage());
@@ -127,7 +130,7 @@ public class GoogleMeetService {
         if (serviceAccountJson == null || serviceAccountJson.isBlank() || eventId == null) return;
         try {
             Calendar service = buildCalendarService();
-            service.events().delete("primary", eventId).setSendUpdates("all").execute();
+            service.events().delete(calendarId, eventId).setSendUpdates("all").execute();
             System.out.println("[GoogleMeet] Event deleted: " + eventId);
         } catch (Exception e) {
             System.err.println("[GoogleMeet] Failed to delete event " + eventId + ": " + e.getMessage());
