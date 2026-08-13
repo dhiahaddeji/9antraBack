@@ -32,7 +32,7 @@ public class Event implements Serializable {
     private String name;
 
     @Lob
-    @Column(name = "description", columnDefinition = "TEXT CHARACTER SET utf8mb4")
+    @Column(name = "description", columnDefinition = "TEXT")
     @Type(type = "org.hibernate.type.TextType")
     private String description;
 

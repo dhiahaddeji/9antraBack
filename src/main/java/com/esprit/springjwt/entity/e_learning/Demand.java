@@ -46,7 +46,7 @@ public class Demand implements Serializable {
     private String subject;
 
     @Lob
-    @Column(name = "message", columnDefinition = "TEXT CHARACTER SET utf8mb4")
+    @Column(name = "message", columnDefinition = "TEXT")
     @Type(type = "org.hibernate.type.TextType")
     private String message;
 
