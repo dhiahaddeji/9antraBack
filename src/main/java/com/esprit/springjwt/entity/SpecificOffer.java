@@ -28,10 +28,10 @@ public class SpecificOffer implements Serializable {
     private String education;
     
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    @Column(columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(columnDefinition = "TIMESTAMP")
     private LocalDateTime date;
     
-    @Column(columnDefinition = "BOOLEAN DEFAULT FALSE")
+    @Column(columnDefinition = "BOOLEAN")
     private boolean status = false;
     
     private String image;

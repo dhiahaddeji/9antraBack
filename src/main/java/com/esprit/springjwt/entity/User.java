@@ -56,7 +56,7 @@ public  class User {
   private  String numeroTel;
 
   @Convert(converter = AuthProviderConverter.class)
-  @Column(columnDefinition = "VARCHAR(255) DEFAULT 'local'")
+  @Column(columnDefinition = "VARCHAR(255)")
   @JsonDeserialize(using = AuthProviderDeserializer.class)
   private AuthProvider provider = AuthProvider.local;
 
@@ -88,7 +88,7 @@ public  class User {
 
   private String country;
 
-  @Column(columnDefinition = "int default 0")
+  @Column(columnDefinition = "int")
   private int enabled = 0;
   
   @ManyToMany(fetch = FetchType.LAZY)

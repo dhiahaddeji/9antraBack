@@ -57,7 +57,7 @@ public class Groups implements Serializable {
 	@Column(name = "certificates_generated")
 	private boolean certificatesGenerated;
 
-	@Column(name = "session_closed", columnDefinition = "TINYINT(1) DEFAULT 0")
+	@Column(name = "session_closed", columnDefinition = "TINYINT(1)")
 	private Boolean sessionClosed = false;
 
 	@Temporal(TemporalType.TIMESTAMP)
