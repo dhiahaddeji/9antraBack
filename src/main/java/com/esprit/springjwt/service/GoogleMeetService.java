@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class GoogleMeetService {
@@ -39,17 +38,17 @@ public class GoogleMeetService {
     }
 
     /**
-     * Creates a Google Calendar event and invites all attendees. If manualMeetLink is provided,
-     * it's attached as the event location so attendees see it in the invite.
-     * Returns a map with "calendarEventId" (and "meetLink" echoing manualMeetLink, if any).
+     * Creates a Google Calendar event. If manualMeetLink is provided, it's attached as the event
+     * location. Returns a map with "calendarEventId" (and "meetLink" echoing manualMeetLink, if any).
      *
-     * Note: this does NOT request an auto-generated Google Meet conference — Meet creation via
-     * the Calendar API is a Workspace-only capability and requesting it on a free-tier calendar
-     * causes the entire event insert to fail (not just the Meet link).
+     * Note: this does NOT request an auto-generated Google Meet conference, and does NOT add
+     * attendees — both are Workspace-only capabilities (domain-wide delegation) when performed by
+     * a plain service account; attempting either causes the entire event insert to fail with the
+     * free-tier setup this project currently uses. Attendee invites are instead sent separately
+     * via EmailService's ICS invite email.
      */
     public Map<String, String> createSessionEvent(String sessionName, String description,
-                                                   Date startDate, Date endDate,
-                                                   List<String> attendeeEmails, String manualMeetLink) {
+                                                   Date startDate, Date endDate, String manualMeetLink) {
         Map<String, String> result = new HashMap<>();
 
         if (serviceAccountJson == null || serviceAccountJson.isBlank()) {
@@ -70,20 +69,7 @@ public class GoogleMeetService {
                 event.setLocation(manualMeetLink);
             }
 
-            // Add attendees (admin + coach + students)
-            if (attendeeEmails != null && !attendeeEmails.isEmpty()) {
-                List<EventAttendee> attendees = attendeeEmails.stream()
-                    .filter(e -> e != null && !e.isBlank())
-                    .distinct()
-                    .map(email -> new EventAttendee().setEmail(email))
-                    .collect(Collectors.toList());
-                event.setAttendees(attendees);
-            }
-
-            Event created = service.events()
-                .insert(calendarId, event)
-                .setSendUpdates("all") // sends invites to attendees
-                .execute();
+            Event created = service.events().insert(calendarId, event).execute();
 
             result.put("calendarEventId", created.getId());
             if (manualMeetLink != null && !manualMeetLink.isBlank()) {
@@ -111,7 +97,7 @@ public class GoogleMeetService {
             if (description != null) event.setDescription(description);
             event.setStart(new EventDateTime().setDateTime(new DateTime(startDate)));
             event.setEnd(new EventDateTime().setDateTime(new DateTime(endDate)));
-            service.events().update(calendarId, eventId, event).setSendUpdates("all").execute();
+            service.events().update(calendarId, eventId, event).execute();
             System.out.println("[GoogleMeet] Event updated: " + eventId);
         } catch (Exception e) {
             System.err.println("[GoogleMeet] Failed to update event " + eventId + ": " + e.getMessage());
@@ -125,16 +111,10 @@ public class GoogleMeetService {
         if (serviceAccountJson == null || serviceAccountJson.isBlank() || eventId == null) return;
         try {
             Calendar service = buildCalendarService();
-            service.events().delete(calendarId, eventId).setSendUpdates("all").execute();
+            service.events().delete(calendarId, eventId).execute();
             System.out.println("[GoogleMeet] Event deleted: " + eventId);
         } catch (Exception e) {
             System.err.println("[GoogleMeet] Failed to delete event " + eventId + ": " + e.getMessage());
         }
-    }
-
-    /** Backward-compatible method used by old code paths. */
-    public String createMeetLink(String sessionName, Date startDate, Date endDate) {
-        Map<String, String> result = createSessionEvent(sessionName, null, startDate, endDate, null, null);
-        return result.get("meetLink");
     }
 }
