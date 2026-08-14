@@ -2,6 +2,8 @@ package com.esprit.springjwt.service;
 
 import com.esprit.springjwt.entity.EmailDetails;
 import com.esprit.springjwt.entity.User;
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.ServiceAccountCredentials;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,6 +20,7 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import javax.mail.util.ByteArrayDataSource;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -25,6 +28,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
@@ -35,7 +39,7 @@ public class EmailServiceImpl implements EmailService{
     @Autowired
      JavaMailSender javaMailSender;
 
-    @Value("${spring.mail.username:haddajidhia123@gmail.com}") private String sender;
+    @Value("${spring.mail.username:contact@9antra.tn}") private String sender;
     @Value("${resend.api.key:}") private String resendApiKey;
     @Value("${brevo.api.key:}") private String brevoApiKey;
     @Value("${mailjet.api.key:}") private String mailjetApiKey;
@@ -70,10 +74,80 @@ public class EmailServiceImpl implements EmailService{
         }
     }
 
+    private void sendViaGmailAPI(String to, String subject, String htmlBody, String icsBase64) throws Exception {
+        String serviceAccountJson = System.getenv("GOOGLE_SERVICE_ACCOUNT_JSON");
+        if (serviceAccountJson == null || serviceAccountJson.isBlank()) {
+            throw new IllegalStateException("GOOGLE_SERVICE_ACCOUNT_JSON not set");
+        }
+        String cleanJson = serviceAccountJson.replace("\\n", "\n");
+        ServiceAccountCredentials saCreds = (ServiceAccountCredentials) ServiceAccountCredentials
+            .fromStream(new ByteArrayInputStream(cleanJson.getBytes(StandardCharsets.UTF_8)));
+        GoogleCredentials credentials = saCreds
+            .createScoped(Collections.singletonList("https://www.googleapis.com/auth/gmail.send"))
+            .createDelegated(sender);
+        credentials.refreshIfExpired();
+        String accessToken = credentials.getAccessToken().getTokenValue();
+
+        String boundary = "bound_" + UUID.randomUUID().toString().replace("-", "");
+        StringBuilder mime = new StringBuilder();
+        mime.append("MIME-Version: 1.0\r\n");
+        mime.append("To: ").append(to).append("\r\n");
+        mime.append("From: 9antra Platform <").append(sender).append(">\r\n");
+        mime.append("Subject: ").append(subject).append("\r\n");
+        if (icsBase64 != null) {
+            mime.append("Content-Type: multipart/mixed; boundary=\"").append(boundary).append("\"\r\n\r\n");
+            mime.append("--").append(boundary).append("\r\n");
+            mime.append("Content-Type: text/html; charset=UTF-8\r\n\r\n");
+            mime.append(htmlBody).append("\r\n");
+            mime.append("--").append(boundary).append("\r\n");
+            mime.append("Content-Type: text/calendar; charset=UTF-8; method=REQUEST\r\n");
+            mime.append("Content-Transfer-Encoding: base64\r\n");
+            mime.append("Content-Disposition: attachment; filename=\"invite.ics\"\r\n\r\n");
+            mime.append(icsBase64).append("\r\n");
+            mime.append("--").append(boundary).append("--\r\n");
+        } else {
+            mime.append("Content-Type: text/html; charset=UTF-8\r\n\r\n");
+            mime.append(htmlBody);
+        }
+        String rawMessage = java.util.Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(mime.toString().getBytes(StandardCharsets.UTF_8));
+
+        String jsonBody = "{\"raw\":\"" + rawMessage + "\"}";
+        URL url = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages/send");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Authorization", "Bearer " + accessToken);
+        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setDoOutput(true);
+        conn.setConnectTimeout(15000);
+        conn.setReadTimeout(15000);
+        try (OutputStream os = conn.getOutputStream()) { os.write(jsonBody.getBytes(StandardCharsets.UTF_8)); }
+        int code = conn.getResponseCode();
+        if (code >= 300) {
+            String err = new String(conn.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+            throw new RuntimeException("Gmail API error " + code + ": " + err);
+        }
+        System.out.println("[Email] Sent via Gmail API to: " + to);
+    }
+
+    private void sendEmail(String to, String subject, String htmlBody, String icsBase64) {
+        try {
+            sendViaGmailAPI(to, subject, htmlBody, icsBase64);
+        } catch (Exception gmailEx) {
+            System.err.println("[Email] Gmail API failed, falling back to Mailjet: " + gmailEx.getMessage());
+            try {
+                sendViaMailjet(to, subject, htmlBody, icsBase64);
+            } catch (Exception mjEx) {
+                System.err.println("[Email] Mailjet also failed: " + mjEx.getMessage());
+                throw new RuntimeException("All email providers failed", mjEx);
+            }
+        }
+    }
+
     // Method 1
     public String sendSimpleMail(String to, String subject, String text) {
         try {
-            sendViaMailjet(to, subject, text, null);
+            sendEmail(to, subject, text, null);
             return "Mail Sent Successfully...";
         } catch (Exception e) {
             System.err.println("[Email] sendSimpleMail failed: " + e.getMessage());
@@ -120,7 +194,7 @@ public class EmailServiceImpl implements EmailService{
             "</div></div></body></html>";
         for (String email : attendeeEmails) {
             try {
-                sendViaMailjet(email, "Session Invitation: " + sessionName, html, icsBase64);
+                sendEmail(email, "Session Invitation: " + sessionName, html, icsBase64);
                 System.out.println("[Email] Calendar invite sent to: " + email);
             } catch (Exception e) {
                 System.err.println("[Email] Failed to send invite to " + email + ": " + e.getMessage());
