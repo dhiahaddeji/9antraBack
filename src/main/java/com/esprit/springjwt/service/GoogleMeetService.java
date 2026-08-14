@@ -8,6 +8,7 @@ import com.google.api.services.calendar.CalendarScopes;
 import com.google.api.services.calendar.model.*;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.ServiceAccountCredentials;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -22,11 +23,16 @@ public class GoogleMeetService {
     @Value("${google.service.account.json:}")
     private String serviceAccountJson;
 
+    @Value("${mail.username:contact@9antra.tn}")
+    private String workspaceUser;
+
     private Calendar buildCalendarService() throws Exception {
         String cleanJson = serviceAccountJson.replace("\\n", "\n");
-        GoogleCredentials credentials = GoogleCredentials
-            .fromStream(new ByteArrayInputStream(cleanJson.getBytes(StandardCharsets.UTF_8)))
-            .createScoped(Collections.singleton(CalendarScopes.CALENDAR));
+        ServiceAccountCredentials saCreds = (ServiceAccountCredentials) ServiceAccountCredentials
+            .fromStream(new ByteArrayInputStream(cleanJson.getBytes(StandardCharsets.UTF_8)));
+        GoogleCredentials credentials = saCreds
+            .createScoped(Collections.singleton(CalendarScopes.CALENDAR))
+            .createDelegated(workspaceUser);
 
         return new Calendar.Builder(
             GoogleNetHttpTransport.newTrustedTransport(),
