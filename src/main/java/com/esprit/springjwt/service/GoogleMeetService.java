@@ -39,12 +39,17 @@ public class GoogleMeetService {
     }
 
     /**
-     * Creates a Google Calendar event with a Meet link and invites all attendees.
-     * Returns a map with "meetLink" and "calendarEventId".
+     * Creates a Google Calendar event and invites all attendees. If manualMeetLink is provided,
+     * it's attached as the event location so attendees see it in the invite.
+     * Returns a map with "calendarEventId" (and "meetLink" echoing manualMeetLink, if any).
+     *
+     * Note: this does NOT request an auto-generated Google Meet conference — Meet creation via
+     * the Calendar API is a Workspace-only capability and requesting it on a free-tier calendar
+     * causes the entire event insert to fail (not just the Meet link).
      */
     public Map<String, String> createSessionEvent(String sessionName, String description,
                                                    Date startDate, Date endDate,
-                                                   List<String> attendeeEmails) {
+                                                   List<String> attendeeEmails, String manualMeetLink) {
         Map<String, String> result = new HashMap<>();
 
         if (serviceAccountJson == null || serviceAccountJson.isBlank()) {
@@ -61,14 +66,11 @@ public class GoogleMeetService {
                 .setStart(new EventDateTime().setDateTime(new DateTime(startDate)))
                 .setEnd(new EventDateTime().setDateTime(new DateTime(endDate)));
 
-            // Add Meet conference
-            event.setConferenceData(new ConferenceData().setCreateRequest(
-                new CreateConferenceRequest()
-                    .setRequestId(UUID.randomUUID().toString())
-                    .setConferenceSolutionKey(new ConferenceSolutionKey().setType("hangoutsMeet"))
-            ));
+            if (manualMeetLink != null && !manualMeetLink.isBlank()) {
+                event.setLocation(manualMeetLink);
+            }
 
-            // Add attendees (coach + students)
+            // Add attendees (admin + coach + students)
             if (attendeeEmails != null && !attendeeEmails.isEmpty()) {
                 List<EventAttendee> attendees = attendeeEmails.stream()
                     .filter(e -> e != null && !e.isBlank())
@@ -80,21 +82,14 @@ public class GoogleMeetService {
 
             Event created = service.events()
                 .insert(calendarId, event)
-                .setConferenceDataVersion(1)
                 .setSendUpdates("all") // sends invites to attendees
                 .execute();
 
-            // Extract Meet link
-            List<EntryPoint> entryPoints = created.getConferenceData().getEntryPoints();
-            if (entryPoints != null) {
-                entryPoints.stream()
-                    .filter(e -> "video".equals(e.getEntryPointType()))
-                    .findFirst()
-                    .ifPresent(e -> result.put("meetLink", e.getUri()));
-            }
-
             result.put("calendarEventId", created.getId());
-            System.out.println("[GoogleMeet] Event created: " + created.getId() + " | Meet: " + result.get("meetLink"));
+            if (manualMeetLink != null && !manualMeetLink.isBlank()) {
+                result.put("meetLink", manualMeetLink);
+            }
+            System.out.println("[GoogleMeet] Event created: " + created.getId());
 
         } catch (Exception e) {
             System.err.println("[GoogleMeet] Failed to create event: " + e.getMessage());
@@ -139,7 +134,7 @@ public class GoogleMeetService {
 
     /** Backward-compatible method used by old code paths. */
     public String createMeetLink(String sessionName, Date startDate, Date endDate) {
-        Map<String, String> result = createSessionEvent(sessionName, null, startDate, endDate, null);
+        Map<String, String> result = createSessionEvent(sessionName, null, startDate, endDate, null, null);
         return result.get("meetLink");
     }
 }

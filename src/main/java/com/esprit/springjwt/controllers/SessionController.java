@@ -95,13 +95,14 @@ public class SessionController {
                 }
             }
 
-            // Create Google Calendar event with Meet link and attendee invites
+            // Create Google Calendar event and attendee invites (admin-supplied meet link, if any)
             java.util.Map<String, String> calResult = googleMeetService.createSessionEvent(
                 session.getSessionName(),
                 session.getDescription(),
                 session.getStartDate(),
                 session.getFinishDate(),
-                attendeeEmails
+                attendeeEmails,
+                session.getMeetLink()
             );
             if (calResult.containsKey("meetLink") && (session.getMeetLink() == null || session.getMeetLink().isBlank())) {
                 session.setMeetLink(calResult.get("meetLink"));
