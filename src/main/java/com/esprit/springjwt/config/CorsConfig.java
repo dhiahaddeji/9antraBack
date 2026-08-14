@@ -26,7 +26,8 @@ public class CorsConfig {
                             "http://localhost:4200",
                             "http://localhost:8094",
                             "https://9antrafront-production.up.railway.app",
-                            "https://9antrafrontend-production.up.railway.app"
+                            "https://9antrafrontend-production.up.railway.app",
+                            "https://9antrafront-production-2e6a.up.railway.app"
                         )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                         .allowedHeaders("*");
