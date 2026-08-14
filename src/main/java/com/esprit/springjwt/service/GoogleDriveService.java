@@ -30,8 +30,9 @@ public class GoogleDriveService {
     private String recordingsFolderId;
 
     private Drive buildDriveService() throws Exception {
+        String cleanJson = serviceAccountJson.replace("\\n", "\n");
         GoogleCredentials credentials = GoogleCredentials
-            .fromStream(new ByteArrayInputStream(serviceAccountJson.getBytes(StandardCharsets.UTF_8)))
+            .fromStream(new ByteArrayInputStream(cleanJson.getBytes(StandardCharsets.UTF_8)))
             .createScoped(Collections.singleton(DriveScopes.DRIVE));
 
         return new Drive.Builder(
