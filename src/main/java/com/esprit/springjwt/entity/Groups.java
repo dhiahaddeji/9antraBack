@@ -65,8 +65,8 @@ public class Groups implements Serializable {
 	private Date closedDate;
 
 
+	@JsonIgnore
 	@ManyToMany(mappedBy = "groups")
-
 	private List<Session> sessions = new ArrayList<>();
 
 

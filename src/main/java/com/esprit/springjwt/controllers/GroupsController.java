@@ -379,7 +379,7 @@ private IRequestService requestService;
     public ResponseEntity<?> getAllStudents() {
         try {
             List<User> allStudents = userService.getAllUsers().stream()
-                    .filter(u -> u.getRoles().stream().anyMatch(r -> r.getName().equals("ETUDIANT")))
+                    .filter(u -> u.getRoles().stream().anyMatch(r -> r.getName() == ERole.ETUDIANT))
                     .filter(u -> u.getEnabled() == 1)
                     .collect(Collectors.toList());
             
