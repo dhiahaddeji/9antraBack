@@ -73,7 +73,13 @@ public class SessionController {
             
             UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
             User currentUser = userDetails.getUser();
-            
+
+            boolean isAdmin = currentUser.getRoles().stream()
+                .anyMatch(r -> r.getName().name().equals("ROLE_ADMIN"));
+            if (!isAdmin) {
+                return ResponseEntity.status(403).body(new MessageResponse("Only admins can create sessions."));
+            }
+
             // Set formateur only if the current user is a formateur; admins can create sessions without one
             Formateur formateur = formateurRepository.findByUserId(currentUser.getId());
             if (formateur != null) {
@@ -83,12 +89,14 @@ public class SessionController {
             List<Groups> groups = SessionService.getGroupsByIds(groupIds);
             session.setGroups(groups);
 
-            // Collect attendee emails: coach + all students across all groups
+            // Collect attendee emails: coaches from groups + all students across all groups
             List<String> attendeeEmails = new ArrayList<>();
-            if (formateur != null && formateur.getUser() != null) {
-                attendeeEmails.add(formateur.getUser().getUsername());
-            }
             for (Groups g : groups) {
+                // Add the group's coach
+                if (g.getFormateur() != null && g.getFormateur().getUsername() != null) {
+                    attendeeEmails.add(g.getFormateur().getUsername());
+                }
+                // Add all students in the group
                 if (g.getEtudiants() != null) {
                     g.getEtudiants().stream()
                         .filter(u -> u != null && u.getUsername() != null)
@@ -96,6 +104,7 @@ public class SessionController {
                         .forEach(attendeeEmails::add);
                 }
             }
+            attendeeEmails = attendeeEmails.stream().distinct().collect(java.util.stream.Collectors.toList());
 
             // Create Google Calendar event with Meet link and attendee invites
             java.util.Map<String, String> calResult = googleMeetService.createSessionEvent(
