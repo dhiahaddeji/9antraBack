@@ -27,6 +27,7 @@ public class AnswerService {
 			newAnswer.setCorrect_answer(answer.getCorrect_answer());
 			newAnswer.setWrong_answer1(answer.getWrong_answer1());
 			newAnswer.setWrong_answer2(answer.getWrong_answer2());
+			newAnswer.setType(answer.getType() != null ? answer.getType() : "multiple");
 			newAnswer.setQuizId(quiz);
 			answerRepository.save(newAnswer);
 		}else {
