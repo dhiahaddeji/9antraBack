@@ -12,26 +12,21 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 
-import org.hibernate.annotations.ColumnDefault;
-
-
 @Entity
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class Answer {
-	 @Id
-	    @GeneratedValue (strategy = GenerationType.IDENTITY)
-	    private Long id ;
-	    private String question;
-	    private String correct_answer;
-	    private String wrong_answer1;
-	    private String wrong_answer2;
-	    
-	    
-	    @ManyToOne(fetch = FetchType.EAGER)
-	    @JoinColumn(name="quiz_id")
-	    Quiz quizId;
-	
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String question;
+    private String correct_answer;
+    private String wrong_answer1;
+    private String wrong_answer2;
+    private String type;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "quiz_id")
+    Quiz quizId;
 }
